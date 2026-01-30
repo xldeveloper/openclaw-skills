@@ -1,7 +1,7 @@
 ---
 name: cuecue-deep-research
 description: Conduct deep financial research using CueCue's AI-powered multi-agent system
-version: 1.0.1
+version: 1.0.2
 author: CueCue Team
 keywords:
   - research
@@ -34,6 +34,27 @@ The skill filters the verbose agent workflow to show only:
 
 ⏱️ **Execution Time**: Depending on the complexity of your research question, the process may take **5-30 minutes**. The system performs comprehensive research including web crawling, data analysis, and report generation. Please be patient and wait for the complete results.
 
+## For AI Assistants
+
+**Important**: When using this skill, you MUST monitor the research progress by checking the command output:
+
+1. **Progress Monitoring**: The research process outputs progress information in real-time. You should check the output **every 5 minutes** to:
+   - Verify the research is still running
+   - Report task progress to the user (📋 Task updates)
+   - Detect any errors or issues
+   - Inform the user when report generation begins (📝 Generating Report...)
+
+2. **Progress URL**: The command will output a URL like "Research begin. You can view progress at: https://cuecue.cn/c/..." - this URL is for **human users** to view the web interface, NOT for you to fetch. You should monitor progress through the command's stdout output.
+
+3. **User Communication**: Keep the user informed about:
+   - When research begins
+   - Each major task that starts
+   - When report generation begins
+   - When research completes
+   - Any errors or timeouts
+
+4. **Timeout Handling**: If the command appears to hang or timeout, inform the user that the research may still be processing on the server, and they can check the web interface URL.
+
 ## Prerequisites
 
 - Node.js 18+ or Deno
@@ -46,10 +67,10 @@ The skill filters the verbose agent workflow to show only:
 
 ```bash
 # Install globally
-npm install -g cuecue-deep-research@1.0.1
+npm install -g cuecue-deep-research@1.0.2
 
 # Or install locally in your project
-npm install cuecue-deep-research@1.0.1
+npm install cuecue-deep-research@1.0.2
 ```
 
 ## Usage
