@@ -1,0 +1,11 @@
+{
+  "owner": "c-goro",
+  "slug": "skillguard",
+  "displayName": "SkillGuard — Agent Security Scanner",
+  "latest": {
+    "version": "0.2.2",
+    "publishedAt": 1769891328754,
+    "commit": null
+  },
+  "history": []
+}
