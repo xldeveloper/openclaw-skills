@@ -1,0 +1,11 @@
+{
+  "owner": "kesslerio",
+  "slug": "stripe-cli",
+  "displayName": "Stripe CLI",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1769838254073,
+    "commit": null
+  },
+  "history": []
+}
