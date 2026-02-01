@@ -1,11 +1,17 @@
 {
   "owner": "ruslanlanket",
   "slug": "lightrag",
-  "displayName": "LightRAG",
+  "displayName": "LightRAG Search Skill",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1769808675970,
-    "commit": "https://github.com/clawdbot/skills/commit/04b256969fa84b0949935244a79e6394095f1d85"
+    "version": "1.0.1",
+    "publishedAt": 1769961188542,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1769808675970,
+      "commit": "https://github.com/clawdbot/skills/commit/04b256969fa84b0949935244a79e6394095f1d85"
+    }
+  ]
 }

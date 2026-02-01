@@ -5,6 +5,7 @@ import os
 import sys
 import urllib.request
 import urllib.parse
+import ssl
 
 CONFIG_PATH = os.path.expanduser("~/.lightrag_config.json")
 
@@ -74,11 +75,11 @@ def main():
         }
 
         try:
-            import ssl
+            # Create unverified context to bypass SSL issues
             ctx = ssl.create_default_context()
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
-            
+
             req = urllib.request.Request(
                 url, 
                 data=json.dumps(payload).encode("utf-8"), 
