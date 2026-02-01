@@ -1,186 +1,151 @@
-# ClawBack - Congressional Trade Mirror Bot
+# ClawBack 🦀
 
-## Overview
-Automated trading application that mirrors congressional stock trades using broker APIs, scaling trade amounts relative to account size. Includes comprehensive congressional trade data collection from official government sources.
+**Mirror congressional stock trades with automated broker execution**
 
-## Architecture
+[![ClawHub](https://img.shields.io/badge/ClawHub-clawback-blue)](https://www.clawhub.ai/skills/clawback)
+[![Version](https://img.shields.io/badge/version-1.0.4-green)](https://github.com/mainfraame/clawback/releases)
+[![Python](https://img.shields.io/badge/python-3.9+-blue)](https://python.org)
 
-### Core Trading Components:
-1. **Congressional Tracker** - Fetches trade data from Senate and House official disclosures
-2. **Broker Adapter** - Handles authentication and trading operations (E*TRADE adapter included)
-3. **Account Monitor** - Tracks account balance and positions
-4. **Trade Calculator** - Scales congressional trades to user's account size
-5. **Execution Engine** - Places and manages orders
-6. **Safety Controller** - Implements risk management and failsafes
+ClawBack tracks stock trades disclosed by members of Congress and executes scaled positions in your brokerage account. Built on the premise that congressional leaders consistently outperform the market.
 
-### Congressional Data System:
-7. **Data Sources** - Official Senate eFD and House Clerk disclosures
-8. **Alert Manager** - Sends alerts for significant trades via Telegram
-9. **Cron Scheduler** - Automated daily data collection (9 AM weekdays)
-10. **Broker Integration** - Creates trading recommendations from alerts
+## Installation
 
-### Data Flow:
-1. **Daily Collection** (9 AM weekdays):
-   - Fetch congressional trade data from official sources
-   - Parse PDFs (House Clerk) and scrape Senate eFD
-   - Generate alerts for significant trades (>$50K)
+### Via ClawHub (Recommended)
 
-2. **Trading Pipeline**:
-   - Process congressional trade alerts
-   - Calculate scaled trade amounts based on account balance
-   - Validate trades (risk checks, market hours)
-   - Place orders via broker API
-   - Monitor execution and update positions
-
-## Configuration
-
-### Main Configuration (`config/config.json`):
-- Broker API credentials (generic naming supports multiple brokers)
-- Trade scaling ratio (percentage of account to allocate)
-- Risk limits (max position size, stop losses)
-- Trading hours restrictions
-
-### Congressional Data Configuration (`config/congress_config.json`):
-- Data source settings (Senate, House)
-- Politician tracking list (Pelosi, Crenshaw, Tuberville, Greene)
-- Alert thresholds and Telegram settings
-- Cron schedule and data retention
-
-## Safety Features
-- Maximum position size limits
-- Daily loss limits
-- Market hours validation
-- Manual override capability
-- Comprehensive logging and monitoring
-- Alert system for significant trades
-
-## Congressional Data System Features
-
-### Automated Data Collection:
-- **Schedule**: Weekdays at 9 AM EST (configurable)
-- **Sources**: Official Senate eFD and House Clerk disclosures
-- **Politicians**: Track specific politicians or all
-- **Thresholds**: Minimum trade size filtering
-
-### Alert System:
-- **Telegram Integration**: Instant notifications
-- **Broker Integration**: Automated trading recommendations
-- **Thresholds**: Configurable trade size alerts (>$50K default)
-
-## OpenClaw Skill Integration
-
-ClawBack is also available as an OpenClaw skill for easy installation and management:
-
-### Install as OpenClaw Skill:
 ```bash
-# Install from local directory
-clawhub install ./clawback
+# Install from ClawHub registry
+clawhub install clawback
 
-# Or copy to skills directory
-cp -r . ~/.openclaw/skills/clawback
-cd ~/.openclaw/skills/clawback
-./setup.sh
+# Run setup wizard
+clawback setup
 ```
 
-### Skill Features:
-- **Automated setup** with virtual environment
-- **Environment-based configuration** (.env file)
-- **OpenClaw metadata** for automatic skill loading
-- **Comprehensive testing** suite
-- **Skill-specific documentation** (SKILL_README.md)
+### Manual Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/mainfraame/clawback.git
+cd clawback
+
+# Install
+pip install -e .
+
+# Run setup
+clawback setup
+```
+
+### From Source with Make
+
+```bash
+git clone https://github.com/mainfraame/clawback.git
+cd clawback
+
+# Create venv and install
+make deps
+
+# Activate and setup
+source venv/bin/activate
+clawback setup
+```
 
 ## Quick Start
 
-### Option 1: Standard Installation
 ```bash
-cd clawback
-pip3 install -r requirements.txt
+# Check system status
+clawback status
+
+# Run interactive trading mode
+clawback run
+
+# Run as background daemon
+clawback daemon
 ```
 
-### Option 2: OpenClaw Skill Installation
+## Configuration
+
+Configuration is stored in `~/.clawback/config.json`. The setup wizard will guide you through:
+
+1. **Broker Selection** - E*TRADE (currently the only supported broker)
+2. **Environment** - Sandbox (testing) or Production (real money)
+3. **API Credentials** - From E*TRADE developer portal
+4. **Account Selection** - Choose which account to trade
+5. **Telegram Notifications** - Optional alerts via Telegram
+
+### Environment Variables
+
 ```bash
-# Install and setup
-clawhub install ./clawback
-cd ~/.openclaw/skills/clawback
-./setup.sh
+# E*TRADE API (required)
+BROKER_API_KEY=your_consumer_key
+BROKER_API_SECRET=your_consumer_secret
+BROKER_ACCOUNT_ID=your_account_id
+
+# Telegram (optional)
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
 ```
 
-### Configure Secrets:
+## Features
+
+- **Real-time disclosure tracking** from official House Clerk and Senate eFD sources
+- **Automated trade execution** via E*TRADE API
+- **Smart position sizing** - scales trades to your account size
+- **Risk management** - stop-losses, drawdown limits, position limits
+- **Telegram notifications** - alerts for new trades and events
+- **OpenClaw integration** - works as an OpenClaw skill
+
+## Architecture
+
+| Component | Description |
+|-----------|-------------|
+| Congressional Tracker | Fetches trade data from official disclosures |
+| Broker Adapter | Handles authentication and trading (E*TRADE) |
+| Trade Engine | Executes orders with risk management |
+| Telegram Notifier | Sends alerts and notifications |
+| Database | SQLite storage for trades and positions |
+
+## Data Sources
+
+- **House Clerk**: https://disclosures-clerk.house.gov (PDF parsing)
+- **Senate eFD**: https://efdsearch.senate.gov (web scraping)
+
+## Risk Management
+
+| Control | Default |
+|---------|---------|
+| Max position size | 5% of portfolio |
+| Max positions | 20 |
+| Daily loss limit | 3% |
+| Portfolio stop-loss | 15% |
+| Position stop-loss | 8% |
+
+## Development
+
 ```bash
-# Run interactive setup
-python3 src/config_loader.py setup
+# Show all make commands
+make help
 
-# Or manually edit secrets
-nano config/secrets.json
+# Version management
+make bump-patch    # 1.0.4 → 1.0.5
+make bump-minor    # 1.0.4 → 1.1.0
+make bump-major    # 1.0.4 → 2.0.0
 
-# For OpenClaw skill, edit .env file
-nano .env
+# Release workflow
+make release       # commit, tag, push
+make publish       # publish to ClawHub
+
+# All-in-one
+make ship-patch    # bump + release + publish
 ```
 
-### Authenticate with Broker:
-```bash
-# Run interactive mode
-python3 src/main.py interactive
-# Select option 1 to authenticate
-```
+## Support
 
-### Set Up Automation:
-```bash
-# Install cron jobs
-./scripts/setup_cron.sh
-```
+- **Issues**: https://github.com/mainfraame/clawback/issues
+- **ClawHub**: https://www.clawhub.ai/skills/clawback
 
-### Run the System:
-```bash
-# Check for new trades
-./scripts/run_bot.sh check
+## Disclaimer
 
-# Monitor stop-losses
-./scripts/run_bot.sh monitor
-
-# Run both
-./scripts/run_bot.sh full
-```
-
-## Documentation
-- **Congressional Data System**: [docs/CONGRESSIONAL_DATA.md](docs/CONGRESSIONAL_DATA.md)
-- **Skill Documentation**: [SKILL.md](SKILL.md)
-
-## Monitoring & Maintenance
-
-### Logs:
-- `logs/trading.log` - Main trading log
-- `data/congress_trades/` - Congressional trade data
-
-### Maintenance:
-- Daily: Check logs and alerts
-- Weekly: Review statistics and performance
-- Monthly: Clean up old data and update configurations
-
-## Security Considerations
-- API keys stored in `config/secrets.json` (git-ignored)
-- Environment variable substitution for sensitive values
-- No personal information beyond public disclosures
-- Rate limiting for web scraping
-
-## Supported Brokers
-
-ClawBack uses an adapter pattern for broker integration. Each broker implements the interface defined in `broker_adapter.py`.
-
-| Broker | Adapter | Status |
-|--------|---------|--------|
-| E*TRADE | `etrade_adapter.py` | Supported |
-| Schwab | `schwab_adapter.py` | Planned |
-| Fidelity | `fidelity_adapter.py` | Planned |
-
-## Support & Troubleshooting
-- Check logs in `logs/` directory
-- Review configuration files
-- Test individual components
-- Consult documentation
+**Trading involves substantial risk of loss.** This software is for educational purposes only. Past congressional trading performance does not guarantee future results. Always test with sandbox accounts before live trading.
 
 ---
 
-**Version**: 1.0.0
-**Last Updated**: January 2026
-**Compatibility**: Python 3.8+
+**Version**: 1.0.4 | **License**: MIT | **Author**: [mainfraame](https://github.com/mainfraame)
