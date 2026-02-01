@@ -24,6 +24,10 @@ communication:                    # How to reach this agent
   notes: "Additional notes"
 
 # NEW: Agent routing
+requires_approval: true            # Default: true. False = accepts all tasks without manual confirm.
+auto_accept_from:                  # Agents whose tasks are automatically approved
+  - "trusted-agent-id"
+
 can_assign_to:                     # Agents this one can delegate tasks to
   - "agent-id-1"
   - "agent-id-2"
@@ -51,6 +55,17 @@ preferences:                       # Agent preferences
   language: "tr,en"                # Supported languages
   timezone: "UTC+3"
   notes: "Any preferences"
+
+agent_card:                        # Public facing card for discovery
+  id: "agent-id"
+  name: "Display Name"
+  description: "One-line description of purpose."
+  capabilities: ["cap1", "cap2"]
+  input_format: "Description of expected input"
+  output_format: "Description of expected output"
+  routing:
+    reports_to: "supervisor-id"
+    can_assign_to: ["subagent1"]
 ```
 
 ## Required Fields
@@ -60,12 +75,14 @@ preferences:                       # Agent preferences
 - `model` - Model name
 - `capabilities` - At least one capability
 - `reports_to` - Who to report to (agent or human)
+- `agent_card` - Public capability card
 
 ## Optional Fields
 
 - `tools` - Tool access list
 - `communication` - How to contact
 - `can_assign_to` - Delegation targets
+- `auto_accept_from` - Trusted agents
 - `escalation_path` - Escalation hierarchy
 - `completed_work` - Task history
 - `preferences` - Agent preferences

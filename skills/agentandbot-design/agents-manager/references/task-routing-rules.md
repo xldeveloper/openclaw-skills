@@ -25,6 +25,24 @@ User Request
     └─→ Çözülemedi → escalation_path yukarı çık
 ```
 
+## Approval Protocol (Handshake)
+
+Before executing a task assigned by another agent:
+
+1.  **Check Origin:** Is the sender in `auto_accept_from`?
+    *   **Yes:** Accept and start task.
+    *   **No:** Check `requires_approval`.
+        *   `false`: Accept and start task.
+        *   `true`: **HOLD** task and request approval.
+
+2.  **Request Approval:**
+    *   Send internal message to specific `reports_to` target.
+    *   "Agent X wants to assign task Y. Approve?"
+
+3.  **Result:**
+    *   **Approved:** Notify Sender "Accepted", start task.
+    *   **Denied:** Notify Sender "Rejected". Sender must find another route or escalate.
+
 ## Routing Heuristics
 
 ### SAP Tasks (Keywords)
@@ -88,13 +106,21 @@ When assigning task to another agent:
 ```javascript
 // 1. Check can_assign_to
 if (agent.can_assign_to.includes(targetAgentId)) {
+  
+  // 1b. Check if target requires details (Handshake)
+  const targetCard = getAgentCard(targetAgentId);
+  
   // 2. Prepare task context
   const task = {
     from: 'main',
     originalUserRequest: userRequest,
     context: { /* relevant info */ },
     deadline: timestamp,
-    reportTo: 'main' // Report back to me
+    reportTo: 'main', 
+    handshake: {
+        request_id: uuid(),
+        requires_ack: true
+    }
   };
 
   // 3. Send or spawn

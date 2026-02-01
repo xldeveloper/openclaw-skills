@@ -8,15 +8,14 @@
  *   node scan_agents.js --update          - Update agent-registry.md
  */
 
-import fs from 'fs';
-import path from 'path';
+const fs = require('fs');
+const path = require('path');
 
-const BASE_DIR = '/home/ubuntu/clawd/skills/public/agents-manager/references';
+// Use relative path for better portability
+const BASE_DIR = path.join(__dirname, '../references');
 const REGISTRY_FILE = path.join(BASE_DIR, 'agent-registry.md');
 
 // Mock agent list - in real implementation, this would query agents_list tool
-// Since we can't use Clawdbot tools from standalone script, this is template
-
 const MOCK_AGENTS = [
   {
     id: 'main',

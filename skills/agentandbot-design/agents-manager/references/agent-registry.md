@@ -49,9 +49,17 @@
 
 | Field | Value |
 |-------|-------|
-| `can_assign_to` | sessions_spawn ile oluşturulan sub-agent'lar (on-demand) |
 | `reports_to` | Ilkerkaan (human) |
+| `can_assign_to` | sessions_spawn ile oluşturulan sub-agent'lar (on-demand) |
 | `escalation_path` | main → Ilkerkaan |
+
+**Health Status:** 🟢 Healthy
+- Last check: 2026-01-31
+- Response time: <500ms
+
+**Performance Stats:**
+- Tasks completed: 20+
+- Success rate: 100%
 
 **Escalation Path:**
 ```
