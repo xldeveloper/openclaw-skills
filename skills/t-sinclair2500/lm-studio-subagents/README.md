@@ -12,6 +12,7 @@ An OpenClaw skill that equips agents to search for and offload tasks to local mo
 - **No configuration required** - Works with models in LM Studio without OpenClaw config setup
 - **Local processing** - All processing happens locally for privacy
 - **Model selection** - Supports LLMs, VLMs, and embedding models based on task needs
+- **Helper scripts** - load.mjs, unload.mjs; lmstudio-api.mjs supports --stateful, --unload-after, --log; smoke test: test.mjs
 
 ## Installation
 
@@ -48,15 +49,15 @@ Example: "Use lmstudio-subagents to summarize this document"
 ## How It Works
 
 1. Lists available models via GET /api/v1/models
-2. Optionally checks loaded_instances or POST /api/v1/models/load for specific options
+2. Optionally checks loaded_instances or runs scripts/load.mjs for explicit load
 3. Selects model by key and capabilities (vision, embedding, context)
-4. Calls POST /api/v1/chat (JIT loads model if needed)
-5. Parses output and optional response_id for stateful follow-up
-6. Optionally POST /api/v1/models/unload with instance_id
+4. Calls POST /api/v1/chat via lmstudio-api.mjs (JIT loads model if needed)
+5. Parses output and optional response_id for stateful follow-up (--stateful persists id)
+6. Optionally runs scripts/unload.mjs or uses --unload-after on chat
 
 ## Performance
 
-Tested with LM Studio 0.4.x. JIT first-request load time in response stats.model_load_time_seconds. API call latency varies with generation length.
+Tested with LM Studio 0.4.x. JIT first-request load time in response stats.model_load_time_seconds. API call latency varies with generation length. Run scripts/test.mjs to verify setup.
 
 ## License
 
