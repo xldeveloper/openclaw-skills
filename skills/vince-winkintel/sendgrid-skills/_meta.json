@@ -3,9 +3,15 @@
   "slug": "sendgrid-skills",
   "displayName": "SendGrid Skills",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1769790223299,
-    "commit": "https://github.com/clawdbot/skills/commit/90deebcf5b6743c884bcd8a3635f2b08c719f42a"
+    "version": "1.0.1",
+    "publishedAt": 1769984651562,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1769790223299,
+      "commit": "https://github.com/clawdbot/skills/commit/90deebcf5b6743c884bcd8a3635f2b08c719f42a"
+    }
+  ]
 }
