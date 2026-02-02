@@ -3,7 +3,7 @@ name: hzl
 description: OpenClaw's persistent task database. Coordinate sub-agents, checkpoint progress, survive session boundaries.
 homepage: https://github.com/tmchow/hzl
 metadata:
-  { "openclaw": { "emoji": "🧾", "homepage": "https://github.com/tmchow/hzl", "requires": { "bins": ["hzl"] }, "install": [ { "id": "node", "kind": "node", "package": "hzl-cli", "bins": ["hzl"], "label": "Install HZL (npm)" } ] } }
+  { "openclaw": { "emoji": "🧾", "homepage": "https://github.com/tmchow/hzl", "requires": { "bins": ["hzl"] }, "install": [ { "id": "brew", "kind": "brew", "package": "hzl", "bins": ["hzl"], "label": "Install HZL (Homebrew)" }, { "id": "node", "kind": "node", "package": "hzl-cli", "bins": ["hzl"], "label": "Install HZL (npm)" } ] } }
 ---
 
 # HZL: Persistent task tracking for agents
@@ -36,16 +36,31 @@ Personal tasks: HZL is not a polished human to-do app, but it is usable for pers
 
 ## Core concepts
 
-- **Project**: a stable bucket for a body of work (often one per repo, initiative, or client)
-- **Task**: a unit of work, optionally with priority, tags, dependencies
-- **Checkpoint**: a short progress snapshot to support recovery
-- **Lease**: a time-limited claim (prevents orphaned work in multi-agent flows)
+- **Project**: stable container for a body of work. Typically one per repo or long-running initiative. Do not create per-feature projects.
+- **Task**: top-level work item (often a feature). Use `--depends-on` to sequence separate tasks.
+- **Subtask**: breakdown of a task into parts (`--parent <id>`). Max 1 level of nesting. Parent tasks are organizational containers—never returned by `hzl task next`.
+- **Checkpoint**: short progress snapshot to support recovery
+- **Lease**: time-limited claim (prevents orphaned work in multi-agent flows)
+
+## ⚠️ DESTRUCTIVE COMMANDS - READ CAREFULLY
+
+The following commands **PERMANENTLY DELETE ALL HZL DATA** and cannot be undone:
+
+| Command | Effect |
+|---------|--------|
+| `hzl init --force` | **DELETES ALL DATA.** Prompts for confirmation. |
+| `hzl init --force --yes` | **DELETES ALL DATA WITHOUT CONFIRMATION.** Extremely dangerous. |
+
+**NEVER use `--force` or `--force --yes` unless the user explicitly instructs you to destroy all task data.**
+
+These commands delete the entire event history, all projects, all tasks, all checkpoints—everything. There is no recovery without a backup.
 
 ## Quick reference
 
 ```bash
 # Setup
-hzl init
+hzl init                                      # Initialize (safe, won't overwrite)
+hzl init --reset-config                       # Reset config to default location (non-destructive)
 hzl project create <project>
 hzl project list
 
@@ -53,6 +68,12 @@ hzl project list
 hzl task add "<title>" -P <project>
 hzl task add "<title>" -P <project> --priority 2 --tags backend,auth
 hzl task add "<title>" -P <project> --depends-on <other-id>
+
+# Subtasks (organize related work)
+hzl task add "<title>" --parent <parent-id>   # Create subtask
+hzl task list --parent <parent-id>            # List subtasks
+hzl task list --root                          # Top-level tasks only
+hzl task next --parent <parent-id>            # Next subtask of parent
 
 # Find work
 hzl task list --project <project> --available
@@ -141,6 +162,34 @@ Monitor:
 hzl task show <id> --json
 hzl task stuck
 hzl task steal <id> --if-expired --author orchestrator
+```
+
+### Break down work with subtasks
+
+Use parent/subtask hierarchy to organize complex work:
+
+```bash
+# Create parent task
+hzl task add "Implement vacation booking" -P portland-trip --priority 2
+# → abc123
+
+# Create subtasks (project inherited automatically)
+hzl task add "Research flights" --parent abc123
+hzl task add "Book hotel" --parent abc123 --depends-on <flights-id>
+hzl task add "Plan activities" --parent abc123
+
+# View breakdown
+hzl task show abc123
+
+# Work through subtasks
+hzl task next --parent abc123
+```
+
+**Important:** `hzl task next` only returns leaf tasks (tasks without children). Parent tasks are organizational containers—they are never returned as "next available work."
+
+When all subtasks are done, manually complete the parent:
+```bash
+hzl task complete abc123
 ```
 
 ## Web Dashboard
