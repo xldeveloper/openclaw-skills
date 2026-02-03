@@ -1,0 +1,11 @@
+{
+  "owner": "xejrax",
+  "slug": "docker-ctl",
+  "displayName": "Docker Ctl",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770135689325,
+    "commit": null
+  },
+  "history": []
+}
