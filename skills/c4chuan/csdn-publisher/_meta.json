@@ -1,13 +1,18 @@
 {
   "owner": "c4chuan",
   "slug": "csdn-publisher",
-  "displayName": "CSDN Publisher",
+  "displayName": "Csdn Publisher",
   "latest": {
-    "version": "1.3.1",
-    "publishedAt": 1769786970787,
-    "commit": "https://github.com/clawdbot/skills/commit/8c4e4fdc8a2524f5b72abf9f50493bfa37ac89ee"
+    "version": "0.1.0",
+    "publishedAt": 1770107046427,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.3.1",
+      "publishedAt": 1769786970787,
+      "commit": "https://github.com/clawdbot/skills/commit/8c4e4fdc8a2524f5b72abf9f50493bfa37ac89ee"
+    },
     {
       "version": "1.3.0",
       "publishedAt": 1769786546271,
