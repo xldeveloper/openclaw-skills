@@ -264,7 +264,7 @@ def generate_report(
         ai_summary = None
         ai_outline = []
         try:
-            time.sleep(1.0)  # AI 总结 API 请求前等待 1 秒
+            time.sleep(3.0)  # AI 总结 API 请求前等待 3 秒（避免触发 B站风控）
             summary_data = api.get_ai_summary(
                 bvid=bvid,
                 cid=video.get("cid", 0),

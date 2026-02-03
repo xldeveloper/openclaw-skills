@@ -121,3 +121,10 @@ python3 {baseDir}/send_email.py --config {baseDir}/bilibili-monitor.json --body-
 ## 配置文件示例
 
 见 `bilibili-monitor.example.json`
+
+## ⚠️ 重要提示
+
+**B站 AI 总结 API 地区限制：**
+- 该 API 仅限中国大陆 IP 访问
+- 海外部署无法获取 B站官方 AI 总结（其他功能正常）
+- 如需完整功能，请部署在中国服务器或配置中国代理
