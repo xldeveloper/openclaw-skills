@@ -3,9 +3,15 @@
   "slug": "habitica-skill",
   "displayName": "Habitica",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1770044751576,
-    "commit": "https://github.com/clawdbot/skills/commit/dbf527b2f506cdc5cfa749dc4ecdc23a28a5ad8c"
+    "version": "0.1.1",
+    "publishedAt": 1770046270969,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1770044751576,
+      "commit": "https://github.com/clawdbot/skills/commit/dbf527b2f506cdc5cfa749dc4ecdc23a28a5ad8c"
+    }
+  ]
 }

@@ -167,11 +167,12 @@ cmd_update() {
         exit 1
     fi
     
-    local text="" notes=""
+    local text="" notes="" priority=""
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --text) text="$2"; shift 2 ;;
             --notes) notes="$2"; shift 2 ;;
+            --priority) priority="$2"; shift 2 ;;
             *) echo "Unknown option: $1" >&2; exit 1 ;;
         esac
     done
@@ -179,6 +180,7 @@ cmd_update() {
     local payload="{}"
     [[ -n "$text" ]] && payload=$(echo "$payload" | jq --arg t "$text" '. + {text: $t}')
     [[ -n "$notes" ]] && payload=$(echo "$payload" | jq --arg n "$notes" '. + {notes: $n}')
+    [[ -n "$priority" ]] && payload=$(echo "$payload" | jq --arg p "$priority" '. + {priority: ($p | tonumber)}')
     
     api_request PUT "/tasks/$task_id" "$payload" | format_task
     echo "✅ Task updated!"
