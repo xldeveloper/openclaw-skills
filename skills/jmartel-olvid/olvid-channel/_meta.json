@@ -1,0 +1,11 @@
+{
+  "owner": "jmartel-olvid",
+  "slug": "olvid-channel",
+  "displayName": "Olvid Channel",
+  "latest": {
+    "version": "0.0.4",
+    "publishedAt": 1770140988338,
+    "commit": null
+  },
+  "history": []
+}

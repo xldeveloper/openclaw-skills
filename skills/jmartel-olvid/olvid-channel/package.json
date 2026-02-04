@@ -1,0 +1,27 @@
+{
+  "name": "openclaw-channel-olvid",
+  "version": "0.0.4",
+  "description": "Olvid native channel for OpenClaw.",
+  "type": "module",
+  "dependencies": {
+    "@olvid/bot-node": "^1.5.0",
+    "zod": "^4.3.6"
+  },
+  "keywords": [
+    "openclaw",
+    "channel",
+    "olvid"
+  ],
+  "openclaw": {
+    "extensions": ["./index.ts"],
+    "channel": {
+      "id": "olvid",
+      "label": "Olvid",
+      "selectionLabel": "Olvid",
+      "docsPath": "/channels/olvid",
+      "docsLabel": "olvid",
+      "blurb": "Trust your agent with authenticated end to end encryption.",
+      "order": 100
+    }
+  }
+}

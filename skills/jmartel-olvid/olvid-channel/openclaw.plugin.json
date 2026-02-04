@@ -1,0 +1,17 @@
+{
+  "id": "olvid-channel",
+  "name": "Olvid Channel",
+  "version": "0.4.0",
+  "description": "",
+  "openclaw": {
+    "channel": {
+      "id": "olvid",
+      "label": "Olvid",
+      "selectionLabel": "Olvid",
+      "docsPath": "/channels/olvid",
+      "docsLabel": "olvid",
+      "blurb": "Trust your agent with authenticated end to end encryption.",
+      "order": 100
+    }
+  }
+}
