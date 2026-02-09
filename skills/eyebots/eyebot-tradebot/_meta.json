@@ -3,11 +3,16 @@
   "slug": "eyebot-tradebot",
   "displayName": "Eyebot Tradebot",
   "latest": {
-    "version": "1.6.0",
-    "publishedAt": 1770637855120,
-    "commit": "https://github.com/openclaw/skills/commit/bd99a7baffeca3f26ee6107026f3a5834773de32"
+    "version": "1.8.0",
+    "publishedAt": 1770638976202,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.6.0",
+      "publishedAt": 1770637855120,
+      "commit": "https://github.com/openclaw/skills/commit/bd99a7baffeca3f26ee6107026f3a5834773de32"
+    },
     {
       "version": "1.1.0",
       "publishedAt": 1770597844513,
