@@ -1,11 +1,17 @@
 {
   "owner": "quadralgame",
   "slug": "quadral",
-  "displayName": "Quadral Word Puzzle",
+  "displayName": "Quadral Openclaw Skill",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1770421653936,
-    "commit": "https://github.com/openclaw/skills/commit/c91c806b617d13d0a97628661096462a3980783d"
+    "version": "2.0.0",
+    "publishedAt": 1770656923846,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770421653936,
+      "commit": "https://github.com/openclaw/skills/commit/c91c806b617d13d0a97628661096462a3980783d"
+    }
+  ]
 }
