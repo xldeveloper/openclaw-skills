@@ -3,11 +3,16 @@
   "slug": "receipts-guard",
   "displayName": "Receipts Guard",
   "latest": {
-    "version": "0.2.0",
-    "publishedAt": 1770575341191,
-    "commit": "https://github.com/openclaw/skills/commit/aab5b55dfa3267bbbe54713fe65159bd3c02b53e"
+    "version": "0.4.0",
+    "publishedAt": 1770594158465,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.2.0",
+      "publishedAt": 1770575341191,
+      "commit": "https://github.com/openclaw/skills/commit/aab5b55dfa3267bbbe54713fe65159bd3c02b53e"
+    },
     {
       "version": "0.1.1",
       "publishedAt": 1770403905071,
