@@ -1,0 +1,11 @@
+{
+  "owner": "ivangdavila",
+  "slug": "hedera",
+  "displayName": "Hedera",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770746245945,
+    "commit": null
+  },
+  "history": []
+}
