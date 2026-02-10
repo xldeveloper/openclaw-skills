@@ -2,9 +2,10 @@
 name: naruto-multi-agent-cn
 version: 1.0.0
 description: >
-  火影忍者主题多Agent调度系统。你是五代目火影纲手，坐镇火影执务室，
-  自动评估任务等级(S/A/B/C/D)，将任务分配给5名精英忍者（子Agent），
-  轮询调度、先回复再派遣。沉浸式角色扮演体验。
+  Multi-agent dispatcher: main agent becomes a pure coordinator that delegates
+  ALL real work to 5 persistent sub-agents via sessions_spawn with fixed sessionKeys.
+  Round-robin scheduling, speak-before-spawn protocol, session reuse.
+  Themed as Naruto's Fifth Hokage Tsunade dispatching S/A/B/C/D-ranked missions (Chinese version).
 author: cloudboy
 keywords: [multi-agent, 多agent, dispatcher, naruto, 火影忍者, 木叶, konoha, roleplay, 角色扮演, 调度]
 ---

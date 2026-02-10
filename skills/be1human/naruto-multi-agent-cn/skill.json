@@ -1,7 +1,7 @@
 {
   "name": "naruto-multi-agent-cn",
-  "version": "1.0.0",
-  "description": "火影忍者主题多Agent调度系统（中文版）。扮演五代目火影纲手，自动评估任务等级(S/A/B/C/D)，将任务轮询派遣给5名精英忍者子Agent。沉浸式火影角色扮演+完整调度框架。",
+  "version": "1.1.0",
+  "description": "Multi-agent dispatcher: turns your main agent into a pure coordinator that delegates ALL tasks to 5 persistent sub-agents via sessions_spawn. Features round-robin scheduling, speak-before-spawn protocol, and fixed sessionKeys for session reuse. Themed as Naruto's Tsunade assigning S/A/B/C/D-ranked missions to shinobi (Chinese version).",
   "author": "cloudboy",
   "homepage": "https://clawhub.ai",
   "keywords": [
