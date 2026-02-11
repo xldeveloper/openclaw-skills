@@ -3,9 +3,15 @@
   "slug": "pdf-ocr-layout",
   "displayName": "pdf-ocr-layout",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1770718409402,
-    "commit": "https://github.com/openclaw/skills/commit/53b95cabe99b019aeaca6a444902089dc579166b"
+    "version": "1.0.2",
+    "publishedAt": 1770776206884,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1770718409402,
+      "commit": "https://github.com/openclaw/skills/commit/53b95cabe99b019aeaca6a444902089dc579166b"
+    }
+  ]
 }
