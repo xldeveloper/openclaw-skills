@@ -93,11 +93,14 @@ if (require.main === module) {
     program
       .option('--target <id>', 'Target Chat/User ID')
       .option('--image <path>', 'Image file path')
+      .option('--content <path>', 'Content (alias for --image)')
       .parse(process.argv);
 
     const options = program.opts();
 
     (async () => {
+        if (options.content && !options.image) options.image = options.content;
+
         if (!options.target || !options.image) {
             console.error('Usage: node send.js --target <id> --image <path>');
             process.exit(1);
