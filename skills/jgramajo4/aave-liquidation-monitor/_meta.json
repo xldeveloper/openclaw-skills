@@ -1,0 +1,11 @@
+{
+  "owner": "jgramajo4",
+  "slug": "aave-liquidation-monitor",
+  "displayName": "Aave Liquidation Monitor",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1770789188759,
+    "commit": null
+  },
+  "history": []
+}
