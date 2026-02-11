@@ -1,0 +1,11 @@
+{
+  "owner": "odrobnik",
+  "slug": "loxone",
+  "displayName": "Loxone Smart Home",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1770821604087,
+    "commit": null
+  },
+  "history": []
+}
