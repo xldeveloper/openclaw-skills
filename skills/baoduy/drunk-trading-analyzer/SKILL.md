@@ -7,16 +7,9 @@ metadata:
       {
         "emoji": "📈",
         "os": ["darwin", "linux", "win32"],
-        "requires": { "bins": ["python3", "node"] },
-        "install":
-          [
-            {
-              "id": "uv-install",
-              "kind": "exec",
-              "command": "pip3 install uv",
-              "label": "Install uv package manager",
-            },
-          ],
+        "mcp_servers":
+          ["tradingview-mcp", "alphavantage", "yahoo-finance-server"],
+        "description": "Uses MCP (Model Context Protocol) tools auto-discovered by mcporter for seamless integration with TradingView, Alpha Vantage, and Yahoo Finance APIs",
       },
   }
 ---
@@ -29,47 +22,89 @@ Multi-source market analysis combining cryptocurrency and stock data with AI-pow
 
 ### Analyze Cryptocurrency
 
-```python
-# MCP tools available:
-# - coin_analysis: Get crypto analysis (TradingView)
-# - smart_volume_scanner: Volume + technical analysis scan
-# - top_gainers: Bullish coins by Bollinger Band analysis
-# - advanced_candle_pattern: Multi-timeframe candle patterns
+```bash
+# List available TradingView tools
+mcporter list tradingview-mcp
+
+# Analyze a specific coin
+mcporter call tradingview-mcp.coin_analysis symbol=BTCUSDT exchange=BINANCE timeframe=15m
+
+# Find bullish coins
+mcporter call tradingview-mcp.top_gainers exchange=BINANCE timeframe=4h limit=25
+
+# Detect volume breakouts
+mcporter call tradingview-mcp.volume_breakout_scanner exchange=KUCOIN timeframe=15m volume_multiplier=2.0
 ```
 
 ### Analyze Stock
 
-```python
-# MCP tools available:
-# - get-ticker-info: Company fundamentals (Alpha Vantage)
-# - get-ticker-news: Latest news articles (Yahoo Finance)
-# - get-price-history: Historical OHLC data
-# - ticker-earning: Earnings data and dates
+```bash
+# List available Alpha Vantage and Yahoo Finance tools
+mcporter list alphavantage
+mcporter list yahoo-finance-server
+
+# Get company fundamentals
+mcporter call alphavantage.get_ticker_info symbol=AAPL
+
+# Fetch latest news
+mcporter call yahoo-finance-server.get_ticker_news symbol=AAPL count=10
+
+# Get stock price history
+mcporter call alphavantage.get_price_history symbol=AAPL period=1y interval=1d
+
+# Get earnings data
+mcporter call alphavantage.ticker_earning symbol=AAPL period=quarterly
 ```
 
 ## Common Use Cases
 
 ### 1. Quick Crypto Analysis
 
-- Call `coin_analysis` for immediate technical overview
-- Use `smart_volume_scanner` to identify breakout opportunities
-- Check `top_gainers` for bullish signals
+```bash
+# 1. Get immediate technical overview
+mcporter call tradingview-mcp.coin_analysis symbol=BTCUSDT
+
+# 2. Identify breakout opportunities
+mcporter call tradingview-mcp.smart_volume_scanner \
+  exchange=BINANCE min_volume_ratio=2.0 min_price_change=2.0
+
+# 3. Find bullish signals
+mcporter call tradingview-mcp.top_gainers exchange=BINANCE timeframe=4h
+```
 
 ### 2. Fundamental Stock Research
 
-- Call `get-ticker-info` for company metrics
-- Fetch `get-ticker-news` for sentiment analysis
-- Review `get-price-history` for trend confirmation
+```bash
+# 1. Get company metrics
+mcporter call alphavantage.get_ticker_info symbol=TSLA
+
+# 2. Get sentiment from latest news
+mcporter call yahoo-finance-server.get_ticker_news symbol=TSLA count=5
+
+# 3. Confirm trend with historical data
+mcporter call alphavantage.get_price_history symbol=TSLA period=1y interval=1d
+```
 
 ### 3. Market Screening
 
-- Use crypto screeners (`top_gainers`, `top_losers`, `volume_breakout_scanner`) to find opportunities
-- Consolidate results into unified trading strategy
+Use crypto screeners to identify opportunities:
+
+```bash
+# Top performers
+mcporter call tradingview-mcp.top_gainers exchange=BINANCE timeframe=1h limit=50
+
+# Volume + momentum
+mcporter call tradingview-mcp.smart_volume_scanner \
+  exchange=KUCOIN min_volume_ratio=3.0 rsi_range=oversold
+
+# Top stock sectors
+mcporter call yahoo-finance-server.get_top_entities \
+  entity_type=performing_companies sector=technology count=10
+```
 
 ### 4. Consolidated Report
 
-- Combine price + technical + news + fundamentals
-- Deliver single analysis with actionable recommendations
+Combine multiple data sources for comprehensive analysis - use scripting or agent calls to orchestrate these tool calls together.
 
 ## MCP Tools Reference
 
