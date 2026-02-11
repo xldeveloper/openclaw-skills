@@ -1,0 +1,11 @@
+{
+  "owner": "cinience",
+  "slug": "alicloud-security-center-sas",
+  "displayName": "Alicloud Security Center Sas",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1770768584044,
+    "commit": null
+  },
+  "history": []
+}
