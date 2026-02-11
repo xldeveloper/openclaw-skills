@@ -5,7 +5,13 @@ set -e
 # This script installs Go (if needed), builds tesla-http-proxy, and generates TLS certs.
 
 SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-PROXY_DIR="${TESLA_PROXY_DIR:-$HOME/.clawdbot/tesla-fleet-api/proxy}"
+NEW_DEFAULT="$HOME/.openclaw/tesla-fleet-api/proxy"
+OLD_DEFAULT="$HOME/.moltbot/tesla-fleet-api/proxy"
+DEFAULT_PROXY_DIR="$NEW_DEFAULT"
+if [ -d "$OLD_DEFAULT" ] && [ ! -d "$NEW_DEFAULT" ]; then
+  DEFAULT_PROXY_DIR="$OLD_DEFAULT"
+fi
+PROXY_DIR="${TESLA_PROXY_DIR:-$DEFAULT_PROXY_DIR}"
 GO_BIN="${HOME}/go/bin"
 
 echo "==> Tesla Fleet API Proxy Setup"
@@ -13,13 +19,9 @@ echo ""
 
 # Check if Go is installed
 if ! command -v go &> /dev/null; then
-    echo "Go is not installed. Installing via Homebrew..."
-    if ! command -v brew &> /dev/null; then
-        echo "Error: Homebrew is required but not installed." >&2
-        echo "Visit: https://brew.sh" >&2
-        exit 1
-    fi
-    brew install go
+    echo "Error: Go is required to build tesla-http-proxy, but was not found." >&2
+    echo "Install Go and re-run this script. (On macOS: 'brew install go')" >&2
+    exit 1
 else
     echo "✓ Go is already installed: $(go version)"
 fi

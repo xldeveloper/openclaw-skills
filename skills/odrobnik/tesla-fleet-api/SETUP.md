@@ -12,6 +12,7 @@ If you just want the CLI command reference, see `SKILL.md`.
 - A domain you control (for public key hosting + virtual key enrollment)
 - `python3`
 - macOS (scripts tested on macOS)
+- For proxy setup: `go`, `git`, `openssl` (and optionally Homebrew to install Go)
 
 ---
 
@@ -19,7 +20,7 @@ If you just want the CLI command reference, see `SKILL.md`.
 
 All runtime state lives outside the skill folder:
 
-`~/.clawdbot/tesla-fleet-api/`
+`~/.openclaw/tesla-fleet-api/` (legacy: `~/.moltbot/tesla-fleet-api/`)
 
 Files:
 - `.env` — **provider creds** (client id/secret) and optional overrides
@@ -40,7 +41,7 @@ cd skills/tesla-fleet-api
 ```
 
 This builds `tesla-http-proxy` and generates TLS material under:
-`~/.clawdbot/tesla-fleet-api/proxy/`
+`~/.openclaw/tesla-fleet-api/proxy/` (legacy: `~/.moltbot/tesla-fleet-api/proxy/`)
 
 ---
 
@@ -56,21 +57,21 @@ openssl ec -in private-key.pem -pubout -out public-key.pem
 ```
 
 Store your private key securely (recommended location):
-`~/.clawdbot/tesla-fleet-api/YOUR_DOMAIN.tesla.private-key.pem`
+`~/.openclaw/tesla-fleet-api/YOUR_DOMAIN.tesla.private-key.pem` (legacy: `~/.moltbot/tesla-fleet-api/YOUR_DOMAIN.tesla.private-key.pem`)
 
 ---
 
 ## 3) Put provider credentials into .env
 
 Create:
-`~/.clawdbot/tesla-fleet-api/.env`
+`~/.openclaw/tesla-fleet-api/.env` (legacy: `~/.moltbot/tesla-fleet-api/.env`)
 
 ```bash
-cat > ~/.clawdbot/tesla-fleet-api/.env <<'EOF'
+cat > ~/.openclaw/tesla-fleet-api/.env <<'EOF'
 TESLA_CLIENT_ID=YOUR_CLIENT_ID
 TESLA_CLIENT_SECRET=YOUR_CLIENT_SECRET
 EOF
-chmod 600 ~/.clawdbot/tesla-fleet-api/.env
+chmod 600 ~/.openclaw/tesla-fleet-api/.env
 ```
 
 Optional overrides you *can* also set in `.env`:
@@ -79,6 +80,7 @@ Optional overrides you *can* also set in `.env`:
 - `TESLA_DOMAIN`
 - `TESLA_BASE_URL`
 - `TESLA_CA_CERT`
+- `TESLA_PRIVATE_KEY` (path to your Tesla ECDSA private key used for signed commands via the local proxy)
 
 ---
 
@@ -125,7 +127,7 @@ Then, on your phone (Tesla app installed):
 Start the proxy:
 
 ```bash
-./scripts/start_proxy.sh ~/.clawdbot/tesla-fleet-api/YOUR_DOMAIN.tesla.private-key.pem
+./scripts/start_proxy.sh ~/.openclaw/tesla-fleet-api/YOUR_DOMAIN.tesla.private-key.pem
 ```
 
 Configure the scripts to talk to the local proxy:
@@ -133,7 +135,7 @@ Configure the scripts to talk to the local proxy:
 ```bash
 python3 scripts/auth.py config set \
   --base-url "https://localhost:4443" \
-  --ca-cert "$HOME/.clawdbot/tesla-fleet-api/proxy/tls-cert.pem"
+  --ca-cert "$HOME/.openclaw/tesla-fleet-api/proxy/tls-cert.pem"
 ```
 
 ---
