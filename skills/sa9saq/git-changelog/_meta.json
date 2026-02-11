@@ -1,11 +1,17 @@
 {
   "owner": "sa9saq",
   "slug": "git-changelog",
-  "displayName": "Git Changelog",
+  "displayName": "git-changelog",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1770526351395,
-    "commit": "https://github.com/openclaw/skills/commit/1f8abfed15aeb2199201fbd76f2904d499a54448"
+    "version": "1.0.2",
+    "publishedAt": 1770791205999,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1770526351395,
+      "commit": "https://github.com/openclaw/skills/commit/1f8abfed15aeb2199201fbd76f2904d499a54448"
+    }
+  ]
 }
