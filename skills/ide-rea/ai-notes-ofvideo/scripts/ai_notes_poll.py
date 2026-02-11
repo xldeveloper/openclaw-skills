@@ -11,7 +11,6 @@ import time
 import requests
 from typing import Dict, Any
 
-
 STATUS_CODES = {
     10000: "processing",
     10002: "completed",
@@ -31,11 +30,7 @@ def query_task(api_key: str, task_id: str) -> Dict[str, Any]:
     response = requests.get(url, headers=headers, params=params, timeout=30)
     response.raise_for_status()
     result = response.json()
-
-    if "errno" in result and result["errno"] != 0:
-        raise RuntimeError(result.get("errmsg", "Unknown error"))
-
-    return result["data"]
+    return result
 
 
 def poll_task(api_key: str, task_id: str, max_attempts: int = 20, interval: int = 3):
@@ -50,11 +45,19 @@ def poll_task(api_key: str, task_id: str, max_attempts: int = 20, interval: int 
     Returns:
         Final task data
     """
-    note_types = {1: "document", 2: "outline", 3: "graphic-text"}
-
+    data = None
     for attempt in range(max_attempts):
         try:
             data = query_task(api_key, task_id)
+            if "errno" in data and data["errno"] == 10000:
+                errno = data["errno"]
+                error_msg = data["show_msg"]
+                print(f"[{attempt + 1}/{max_attempts}] Processing...(task status code: {errno}, message: {error_msg})")
+                time.sleep(interval)
+                continue
+            if "errno" in data and data["errno"] != 0:
+                raise RuntimeError(data.get("show_msg", "Unknown error"))
+            data = data.get("data", {})
             aiNotesList = data.get("list", [])
             status_code = 0
             for note in aiNotesList:
@@ -78,12 +81,11 @@ def poll_task(api_key: str, task_id: str, max_attempts: int = 20, interval: int 
                 return data
 
             elif status_code == 10000:
-                progress = data.get("progress", 0)
-                print(f"[{attempt + 1}/{max_attempts}] Processing... {progress}%")
+                print(f"[{attempt + 1}/{max_attempts}] Processing...")
                 time.sleep(interval)
-
+                continue
             else:
-                print(f"\n✗ Task failed: {data.get('error', 'Unknown error')}")
+                print(f"\n✗ Task failed, with status code: {status_code}")
                 return data
 
         except RuntimeError as e:
