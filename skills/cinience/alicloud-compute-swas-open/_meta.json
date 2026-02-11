@@ -1,0 +1,11 @@
+{
+  "owner": "cinience",
+  "slug": "alicloud-compute-swas-open",
+  "displayName": "Alicloud Compute Swas Open",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1770768517853,
+    "commit": null
+  },
+  "history": []
+}
