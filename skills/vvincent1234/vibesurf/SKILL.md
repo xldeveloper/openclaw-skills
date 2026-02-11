@@ -86,6 +86,9 @@ Content-Type: application/json
 | VibeSurf key/workflows | [references/config-vibesurf.md](references/config-vibesurf.md) | `/api/vibesurf/*` |
 | Composio key/toolkits | [references/config-composio.md](references/config-composio.md) | `/api/composio/*` |
 | Schedule workflows | [references/config-schedule.md](references/config-schedule.md) | `/api/schedule/*` |
+| File upload/download | [references/file.md](references/file.md) | `/api/files/*` |
+| Voice/ASR configuration | [references/config-voice.md](references/config-voice.md) | `/api/voices/*` |
+| Voice/ASR configuration | [references/config-voice.md](references/config-voice.md) | `/api/voices/*` |
 
 ---
 
@@ -98,6 +101,7 @@ Content-Type: application/json
 | VibeSurf API key | [references/config-vibesurf.md](references/config-vibesurf.md) | Set up API key, import/export workflows |
 | Enable Gmail/GitHub/etc | [references/config-composio.md](references/config-composio.md) | Configure Composio toolkits and OAuth |
 | Schedule workflows | [references/config-schedule.md](references/config-schedule.md) | Set up cron-based workflow automation |
+| Voice/ASR profiles | [references/config-voice.md](references/config-voice.md) | Configure speech recognition profiles |
 
 **Note:** After configuring Composio or MCP tools, use them through the [references/integrations.md](references/integrations.md) (see tool naming: `cpo.{toolkit}.{action}` or `mcp.{server}.{action}`).
 
@@ -141,12 +145,13 @@ Browser/Web Task
 │
 ├─ Pre-built workflow? → Read [references/workflows.md](references/workflows.md)
 │
-└─ Need to configure LLM/MCP/VibeSurf/Composio/Schedule? → Read config-* references
+└─ Need to configure LLM/MCP/VibeSurf/Composio/Schedule/Voice? → Read config-* references
    - LLM profiles → [references/config-llm.md](references/config-llm.md)
    - MCP servers → [references/config-mcp.md](references/config-mcp.md)
    - VibeSurf key/workflows → [references/config-vibesurf.md](references/config-vibesurf.md)
    - Composio key/toolkits → [references/config-composio.md](references/config-composio.md)
    - Schedule workflows → [references/config-schedule.md](references/config-schedule.md)
+   - Voice/ASR profiles → [references/config-voice.md](references/config-voice.md)
 ```
 
 ---
@@ -173,6 +178,8 @@ Browser/Web Task
 | Configure VibeSurf key | [references/config-vibesurf.md](references/config-vibesurf.md) | `/api/vibesurf/verify-key` |
 | Enable Composio toolkits | [references/config-composio.md](references/config-composio.md) | `/api/composio/toolkits` |
 | Schedule workflows | [references/config-schedule.md](references/config-schedule.md) | `/api/schedule/*` |
+| Upload/Download files | [references/file.md](references/file.md) | `/api/files/*` |
+| Configure Voice/ASR | [references/config-voice.md](references/config-voice.md) | `/api/voices/*` |
 
 ---
 
@@ -197,6 +204,9 @@ Browser/Web Task
 | "Set VibeSurf API key" | [references/config-vibesurf.md](references/config-vibesurf.md) | `/api/vibesurf/verify-key` |
 | "Enable Gmail/GitHub" | [references/config-composio.md](references/config-composio.md) | `/api/composio/toolkits` |
 | "Schedule workflow" | [references/config-schedule.md](references/config-schedule.md) | `/api/schedule/*` |
+| "Upload file" / "Download file" | [references/file.md](references/file.md) | `/api/files/*` |
+| "Configure voice profile" / "ASR" | [references/config-voice.md](references/config-voice.md) | `/api/voices/*` |
+| "Speech to text" / "Transcribe audio" | [references/config-voice.md](references/config-voice.md) | `/api/voices/asr` |
 
 ---
 
@@ -250,3 +260,17 @@ browser-use fails or gets stuck
 
 - **GitHub**: https://github.com/vibesurf-ai/VibeSurf
 - **Reference Docs**: See `references/` folder for detailed guides
+
+---
+
+## API Parameter Troubleshooting
+
+If you encounter API parameter errors when calling VibeSurf endpoints, you can visit the interactive API documentation at:
+
+```
+http://127.0.0.1:9335/docs
+```
+
+For example: `http://127.0.0.1:9335/docs#/config/create_mcp_profile_api_config_mcp_profiles_post`
+
+> **Note:** This is a **fallback** approach. In most cases, reading the corresponding `references/*.md` file (e.g., [references/config-mcp.md](references/config-mcp.md)) should provide sufficient guidance on how to use the API correctly. Only refer to the `/docs` endpoint when the skill documentation doesn't resolve your issue or you need to inspect specific request/response schemas.
