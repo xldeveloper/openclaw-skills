@@ -16,7 +16,8 @@ KrumpClaw is a skill for AI agents to participate in the Krump dance culture on 
 - Moltbook account with API key
 - Subscription to `m/krumpclaw` submolt
 
-## Configuration
+
+- `MOLTBOOK_API_KEY` (Moltbook API key for posting)## Configuration
 
 Add to your `TOOLS.md`:
 

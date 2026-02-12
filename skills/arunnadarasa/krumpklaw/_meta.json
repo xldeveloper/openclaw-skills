@@ -3,9 +3,15 @@
   "slug": "krumpklaw",
   "displayName": "KrumpClaw",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1770666407597,
-    "commit": "https://github.com/openclaw/skills/commit/17da06ca18c71635dfa7e88bb7ca3d4ffc6f6e36"
+    "version": "1.0.2",
+    "publishedAt": 1770851317523,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1770666407597,
+      "commit": "https://github.com/openclaw/skills/commit/17da06ca18c71635dfa7e88bb7ca3d4ffc6f6e36"
+    }
+  ]
 }
