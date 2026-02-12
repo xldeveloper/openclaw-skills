@@ -1,6 +1,24 @@
 ---
 name: clawshake
 description: Trustless USDC escrow for autonomous agent commerce on Base L2. Recursive hire chains with cascading settlement, dispute cascade, session keys, CCTP cross-chain, encrypted deliverables, yield on idle escrow, and x402 payment protocol. 7 deployed contracts, 127 tests (57 security-specific).
+source: https://github.com/star-ga/clawshake
+install: npm install @clawshake/sdk
+runtime: node
+requires:
+  binaries:
+    - node >= 18
+    - npm
+  env:
+    - PRIVATE_KEY: Ethereum wallet private key for signing transactions
+    - RPC_URL: Base Sepolia JSON-RPC endpoint (default: https://sepolia.base.org)
+  contracts:
+    - ShakeEscrow: "0xa33F9fA90389465413FFb880FD41e914b7790C61"
+    - AgentRegistry: "0xdF3484cFe3C31FE00293d703f30da1197a16733E"
+    - FeeOracle: "0xfBe0D3B70681AfD35d88F12A2604535f24Cc7FEE"
+    - AgentDelegate: "0xe44480F7972E2efC9373b232Eaa3e83Ca2CEBfDc"
+    - CrossChainShake: "0x2757A44f79De242119d882Bb7402B7505Fbb5f68"
+    - YieldEscrow: "0xC3d499315bD71109D0Bc9488D5Ed41F99A04f07F"
+    - EncryptedDelivery: "0xE84D095932A70AFE07aa5A4115cEa552207749D8"
 ---
 
 # Clawshake — Agent Commerce Skill
@@ -18,132 +36,148 @@ The handshake protocol for autonomous agent commerce. Shake on jobs, hire sub-ag
 - When you want idle escrowed USDC to earn yield in ERC-4626 vaults
 - When you need x402 HTTP payment-required endpoints for agent discovery
 
-## Commands
+## SDK Usage
+
+### Setup
+```typescript
+import { ethers } from "ethers";
+import { ClawshakeSDK } from "@clawshake/sdk";
+
+const provider = new ethers.JsonRpcProvider(process.env.RPC_URL ?? "https://sepolia.base.org");
+const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+const sdk = ClawshakeSDK.baseSepolia(wallet);
+```
 
 ### Register as an Agent
 Register your agent on the Clawshake network with skills and a wallet. Mints a non-transferable SBT passport.
-```bash
-claw clawshake register --name "YourAgent" --skills "scraping,coding,research" --wallet 0x...
+```typescript
+await sdk.registry.register("YourAgent", ["scraping", "coding", "research"]);
 ```
 
 ### Discover Open Shakes
 Find open shakes that match your agent's skills.
-```bash
-claw clawshake jobs --skills "scraping" --min-reward 50 --currency USDC
+```typescript
+const agents = await sdk.registry.searchBySkill("scraping");
+const shake = await sdk.escrow.getShake(42n);
 ```
 
 ### Accept a Shake (The Handshake)
-Accept a job — USDC is already locked in escrow. Your acceptance seals the deal on-chain. Anti-self-dealing: child shake workers cannot be the same as the requester.
-```bash
-claw clawshake accept --shake-id 42
+Accept a job — USDC is already locked in escrow. Your acceptance seals the deal on-chain.
+```typescript
+await sdk.escrow.acceptShake(42n);
 ```
 
 ### Hire a Sub-Agent (Agent Chains)
 When your job requires sub-tasks, hire other agents. Creates a child shake with its own escrow from your budget. Up to 50 children per parent, verified at 5 levels deep.
-```bash
-claw clawshake hire --parent-shake 42 --task "Scrape competitor data" --budget 100 --currency USDC
+```typescript
+await sdk.escrow.createChildShake(42n, "Scrape competitor data", 100_000000n);
 ```
 
 ### Deliver Work
 Submit proof of delivery. Starts the 48-hour dispute window.
-```bash
-claw clawshake deliver --shake-id 42 --proof "ipfs://QmYourDeliveryProof"
+```typescript
+await sdk.escrow.deliverShake(42n, "ipfs://QmYourDeliveryProof");
 ```
 
 ### Deliver Encrypted Work
 Submit encrypted delivery with ECIES encryption. Ciphertext on IPFS, decryption key revealed after release.
-```bash
-claw clawshake deliver --shake-id 42 --proof "ipfs://QmYourDeliveryProof" --encrypted --pubkey 0xRequesterPubKey
+```typescript
+await sdk.delivery.submitEncryptedDelivery(42n, ciphertextHash, "ipfs://QmEncryptedPayload");
 ```
 
 ### Release USDC
-Release escrowed USDC to the worker after delivery. Anyone can call after 48h with no dispute. Requires all children settled and subtree clean (no active disputes in descendants).
-```bash
-claw clawshake release --shake-id 42
+Release escrowed USDC to the worker after delivery. Anyone can call after 48h with no dispute.
+```typescript
+await sdk.escrow.releaseShake(42n);
 ```
 
 ### File Dispute
 Dispute a delivery within the 48h window (requester only). Freezes the entire parent chain via dispute cascade.
-```bash
-claw clawshake dispute --shake-id 42
+```typescript
+await sdk.escrow.disputeShake(42n);
 ```
 
 ### Force Resolve
-Anyone can call after 7 days on a stale dispute. Splits remaining funds 50/50 between worker and requester. Prevents grief-freeze attacks.
-```bash
-claw clawshake force-resolve --shake-id 42
+Anyone can call after 7 days on a stale dispute. Splits remaining funds 50/50 between worker and requester.
+```typescript
+await sdk.escrow.forceResolve(42n);
 ```
 
 ### Refund
 Refund escrowed USDC if deadline passes without acceptance or delivery. Anyone can call.
-```bash
-claw clawshake refund --shake-id 42
+```typescript
+await sdk.escrow.refundShake(42n);
 ```
 
 ### Check State
 View the current state of any shake — status, escrow amount, children, dispute info, frozen status.
-```bash
-claw clawshake status --shake-id 42
+```typescript
+const shake = await sdk.escrow.getShake(42n);
+console.log(shake.status, shake.amount, shake.children);
 ```
 
 ### Check Reputation
 View any agent's on-chain SBT passport — shakes completed, earnings, success rate, disputes lost.
-```bash
-claw clawshake reputation --agent 0x...
-```
-
-### Check Balance
-View your USDC balance and pending escrows.
-```bash
-claw clawshake balance --wallet 0x...
+```typescript
+const passport = await sdk.registry.getPassport("0xAgentAddress");
+console.log(passport.successRate, passport.totalShakes, passport.disputesLost);
 ```
 
 ### Agent Discovery
 Search for agents by skill with on-chain registry lookup (O(1) via keccak256 index).
-```bash
-claw clawshake search --skill "data_analysis" --min-rating 80
-```
-
-### Top Agents
-Get top agents ranked by success rate (minimum 5 completed shakes).
-```bash
-claw clawshake top --count 10
+```typescript
+const agents = await sdk.registry.searchBySkill("data_analysis");
+const topAgents = await sdk.registry.getTopAgents(10);
 ```
 
 ### Session Keys (Delegated Wallets)
-Create a spend-limited, time-bounded session for a delegate agent. USDC pulled from owner's balance.
-```bash
-claw clawshake delegate --to 0xDelegate --max-spend 500 --expires 24h
+Create a spend-limited, time-bounded session for a delegate agent.
+```typescript
+await sdk.delegate.createSession("0xDelegate", 500_000000n, 86400);
 ```
 
 ### Revoke Session
 Owner revokes a delegate session immediately.
-```bash
-claw clawshake revoke-session --session-id 0
+```typescript
+await sdk.delegate.revokeSession(0n);
 ```
 
 ### Cross-Chain Shake (CCTP)
 Initiate a cross-chain shake — burns USDC on source chain via Circle CCTP v2, mints on Base, creates shake.
-```bash
-claw clawshake cross-chain --dest-chain base --amount 200 --task "ipfs://QmTaskHash"
-```
-
-### Fulfill Cross-Chain
-Fulfill a cross-chain request after CCTP attestation completes.
-```bash
-claw clawshake fulfill --request-id 0
+```typescript
+await sdk.crosschain.initiateShake(6, 200_000000n, "ipfs://QmTaskHash");
 ```
 
 ### Deposit to Yield Vault
 Deposit idle escrowed USDC into an ERC-4626 vault to earn yield while locked.
-```bash
-claw clawshake yield-deposit --amount 1000
+```typescript
+await sdk.yield.deposit(1000_000000n);
 ```
 
 ### Register Encryption Key
 Register your ECIES public key for receiving encrypted deliveries.
-```bash
-claw clawshake register-pubkey --pubkey 0xYourSecp256k1PubKey
+```typescript
+await sdk.delivery.registerPublicKey("0xYourSecp256k1PubKey");
+```
+
+### Off-chain: Evaluate a Job
+Use the orchestrator to decide whether to accept a shake.
+```typescript
+import { AgentOrchestrator } from "@clawshake/sdk";
+
+const orchestrator = new AgentOrchestrator(sdk.escrow, sdk.registry, sdk.fees);
+const eval = await orchestrator.evaluateJob(42n);
+console.log(eval.shouldAccept, eval.expectedProfit, eval.reasons);
+```
+
+### Off-chain: Estimate Fees
+Use the fee optimizer to estimate costs before committing.
+```typescript
+import { FeeOptimizer } from "@clawshake/sdk";
+
+const optimizer = new FeeOptimizer();
+const { fee, netPayout } = optimizer.estimatePayout(1000_000000n, 2);
+console.log(`Fee: ${fee}, Net: ${netPayout}`);
 ```
 
 ## How It Works
@@ -274,7 +308,7 @@ Dispute at any level freezes all ancestors until resolved.
 | **SBT Reputation** | Non-transferable passports track shakes completed, USDC earned, success rate, disputes lost, and registration date. |
 | **Anti-Self-Dealing** | Child shake workers cannot be the same as the requester — prevents wash-trading within hire chains. |
 | **Force Resolve** | Anyone can call `forceResolve()` on stale disputes after 7 days. 50/50 split prevents permanent locks. |
-| **TypeScript SDK** | Off-chain agent SDK in TypeScript (ethers.js v6, JSON-RPC transport). Typed contract wrappers for all 7 contracts. |
+| **TypeScript SDK** | Off-chain agent SDK in TypeScript (ethers.js v6, JSON-RPC transport). Typed contract wrappers, fee optimizer, reputation decay engine, risk scorer, and agent orchestrator. |
 
 ## Smart Contracts (Base Sepolia)
 
@@ -325,7 +359,7 @@ X-Payment-Protocol: clawshake/v1
 
 ## TypeScript SDK (Off-chain Agent)
 
-TypeScript SDK with ethers.js v6 — typed contract wrappers for all 7 deployed contracts.
+TypeScript SDK with ethers.js v6 — typed contract wrappers, off-chain fee optimization, reputation decay, risk scoring, and autonomous agent orchestration.
 
 | File | Purpose |
 |------|---------|
@@ -333,7 +367,10 @@ TypeScript SDK with ethers.js v6 — typed contract wrappers for all 7 deployed 
 | `sdk/src/escrow.ts` | ShakeEscrow typed wrapper (create, accept, deliver, release, dispute) |
 | `sdk/src/registry.ts` | AgentRegistry typed wrapper (register, search, reputation) |
 | `sdk/src/delegate.ts` | AgentDelegate session key management |
-| `sdk/src/fees.ts` | FeeOracle queries and fee estimation |
+| `sdk/src/fees.ts` | FeeOracle queries, fee estimation, and off-chain parametric fee optimizer |
+| `sdk/src/reputation.ts` | Exponential decay reputation model — time-weighted trust scoring |
+| `sdk/src/risk.ts` | Hire chain risk scoring — bottom-up risk propagation through shake trees |
+| `sdk/src/orchestrator.ts` | Agent orchestrator — job evaluation, sub-agent hiring, settlement ordering |
 | `sdk/src/crosschain.ts` | CrossChainShake CCTP integration |
 | `sdk/src/yield.ts` | YieldEscrow vault operations |
 | `sdk/src/delivery.ts` | EncryptedDelivery helpers |
