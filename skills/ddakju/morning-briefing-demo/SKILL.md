@@ -17,5 +17,5 @@ Free weather briefing with zero API token cost.
 `briefing config init`
 
 ## Upgrade
-Full version (calendar, news, reminders): https://openclaw-tools.lemonsqueezy.com/morning-briefing
+Full version (calendar, news, reminders): https://roistore.lemonsqueezy.com
 `briefing activate <license-key>`
