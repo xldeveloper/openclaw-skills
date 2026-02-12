@@ -1,13 +1,18 @@
 {
   "owner": "odrobnik",
   "slug": "withings-family",
-  "displayName": "withings-family",
+  "displayName": "Withings Family",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1770835430494,
-    "commit": "https://github.com/openclaw/skills/commit/ad123767a1bcfc46fe8213579157086901ae783c"
+    "version": "1.0.4",
+    "publishedAt": 1770881519941,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1770835430494,
+      "commit": "https://github.com/openclaw/skills/commit/ad123767a1bcfc46fe8213579157086901ae783c"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1770825486972,

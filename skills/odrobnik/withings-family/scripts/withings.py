@@ -21,16 +21,21 @@ def _base_dir() -> Path:
 
 BASE_DIR = _base_dir()
 
-# Load .env if present
-env_file = BASE_DIR / '.env'
-if env_file.exists():
-    for line in env_file.read_text().splitlines():
-        if '=' in line and not line.strip().startswith('#'):
-            key, value = line.split('=', 1)
-            os.environ[key.strip()] = value.strip().strip('"\'')
+# Auth: set WITHINGS_CLIENT_ID / WITHINGS_CLIENT_SECRET in environment,
+# or put them in workspace/withings-family/config.json.
+def _load_config_json() -> dict:
+    cfg_path = BASE_DIR / 'config.json'
+    if cfg_path.exists():
+        import json as _json
+        try:
+            return _json.loads(cfg_path.read_text())
+        except Exception:
+            pass
+    return {}
 
-CLIENT_ID = os.environ.get('WITHINGS_CLIENT_ID')
-CLIENT_SECRET = os.environ.get('WITHINGS_CLIENT_SECRET')
+_cfg = _load_config_json()
+CLIENT_ID = os.environ.get('WITHINGS_CLIENT_ID') or _cfg.get('client_id')
+CLIENT_SECRET = os.environ.get('WITHINGS_CLIENT_SECRET') or _cfg.get('client_secret')
 REDIRECT_URI = 'http://localhost:18081'
 
 
