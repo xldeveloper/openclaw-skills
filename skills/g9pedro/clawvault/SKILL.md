@@ -1,6 +1,6 @@
 ---
 name: clawvault
-version: 1.11.9
+version: 1.12.0
 description: Agent memory system with checkpoint/recover, structured storage, observational memory, and session transcript repair. Integrates with OpenClaw's qmd memory backend for BM25+vector+reranker search. Use when: storing/searching memories, preventing context death, repairing broken sessions. Don't use when: general file I/O.
 author: Versatly
 repository: https://github.com/Versatly/clawvault
