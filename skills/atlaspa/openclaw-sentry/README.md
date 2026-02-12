@@ -4,7 +4,6 @@ Secret scanner for [OpenClaw](https://github.com/openclaw/openclaw), [Claude Cod
 
 Scans workspace files for leaked API keys, tokens, passwords, private keys, and credentials — the secrets that agent workspaces silently accumulate.
 
-**Want automated countermeasures?** Upgrade to Pro — auto-redaction, quarantine, and defense. [Get Pro access](https://github.com/sponsors/AtlasPA).
 
 ## The Problem
 
@@ -52,9 +51,7 @@ All commands accept `--workspace /path/to/workspace`. If omitted, auto-detects f
 - **Environment Files** — .env files with variables
 - **.gitignore gaps** — Missing patterns for common secret files
 
-## Free vs Pro
 
-| Feature | Free | [Pro](https://github.com/sponsors/AtlasPA) |
 |---------|------|-----|
 | Secret detection (25+ patterns) | Yes | Yes |
 | High-risk file detection | Yes | Yes |

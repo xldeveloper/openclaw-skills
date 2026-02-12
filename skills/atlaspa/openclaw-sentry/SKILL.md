@@ -1,6 +1,5 @@
 ---
 name: openclaw-sentry
-description: "Scan workspace files for leaked secrets: API keys, tokens, passwords, private keys, and credentials. Detects AWS, GitHub, Slack, Stripe, OpenAI, Anthropic, Google, Azure keys and more. Free alert layer — upgrade to openclaw-sentry-pro for automated redaction, quarantine, and defense."
 user-invocable: true
 metadata: {"openclaw":{"emoji":"🔑","requires":{"bins":["python3"]},"os":["darwin","linux","win32"]}}
 ---
@@ -13,7 +12,6 @@ Scans your agent workspace for leaked secrets — API keys, tokens, passwords, p
 
 Agent workspaces accumulate secrets: API keys in config files, tokens in memory logs, passwords in environment files. A single leaked credential can compromise your entire infrastructure. Existing secret scanners work on git repos — nothing watches the agent workspace itself.
 
-**Need automated countermeasures?** Upgrade to [openclaw-sentry-pro](https://github.com/AtlasPA/openclaw-sentry-pro) for redaction, quarantine, and defense.
 
 ## Commands
 
