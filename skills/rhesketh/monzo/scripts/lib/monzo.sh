@@ -6,7 +6,7 @@ set -euo pipefail
 
 # Constants
 MONZO_API_BASE="${MONZO_API_BASE:-https://api.monzo.com}"
-CREDENTIALS_DIR="${CLAWDBOT_CREDENTIALS_DIR:-${HOME}/.clawdbot/credentials}"
+CREDENTIALS_DIR="${OPENCLAW_CREDENTIALS_DIR:-${CLAWDBOT_CREDENTIALS_DIR:-${HOME}/.openclaw/credentials}}"
 CREDENTIALS_FILE="${CREDENTIALS_DIR}/monzo.json"
 
 # Global variables (loaded from credentials)

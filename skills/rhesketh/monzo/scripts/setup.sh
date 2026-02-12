@@ -15,7 +15,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CREDENTIALS_DIR="${CLAWDBOT_CREDENTIALS_DIR:-${HOME}/.clawdbot/credentials}"
+CREDENTIALS_DIR="${OPENCLAW_CREDENTIALS_DIR:-${CLAWDBOT_CREDENTIALS_DIR:-${HOME}/.openclaw/credentials}}"
 CREDENTIALS_FILE="${CREDENTIALS_DIR}/monzo.json"
 MONZO_API_BASE="${MONZO_API_BASE:-https://api.monzo.com}"
 
@@ -242,7 +242,7 @@ if [[ -z "${MONZO_KEYRING_PASSWORD:-}" ]]; then
   print_error "MONZO_KEYRING_PASSWORD environment variable not set"
   echo ""
   echo "This password is used to encrypt your Monzo credentials."
-  echo "Add it to your shell environment or Clawdbot config:"
+  echo "Add it to your shell environment or OpenClaw config:"
   echo ""
   echo "  export MONZO_KEYRING_PASSWORD='your-secure-password'"
   echo ""
@@ -346,7 +346,7 @@ else
   echo "You need to create an OAuth client at: https://developers.monzo.com/"
   echo ""
   echo "Client settings:"
-  echo "  • Name: Clawdbot (or your preferred name)"
+  echo "  • Name: OpenClaw (or your preferred name)"
   echo "  • Confidentiality: Confidential  ← IMPORTANT for refresh tokens"
   echo "  • Redirect URL: http://localhost"
   echo ""

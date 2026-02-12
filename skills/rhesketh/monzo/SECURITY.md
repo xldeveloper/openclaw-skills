@@ -31,14 +31,14 @@ If you need to remove this skill or change systems:
 
 ```bash
 # Securely delete credentials (overwrites multiple times)
-shred -u ~/.clawdbot/credentials/monzo.json
+shred -u ~/.openclaw/credentials/monzo.json
 
 # Or if shred is not available:
-rm -P ~/.clawdbot/credentials/monzo.json  # macOS
-srm ~/.clawdbot/credentials/monzo.json    # If srm is installed
+rm -P ~/.openclaw/credentials/monzo.json  # macOS
+srm ~/.openclaw/credentials/monzo.json    # If srm is installed
 
-# Remove from Clawdbot config
-# Edit ~/.clawdbot/clawdbot.json and remove the monzo entry
+# Remove from OpenClaw config
+# Edit openclaw.json and remove the monzo entry
 ```
 
 ## Webhook Security
@@ -112,4 +112,4 @@ For the security-minded:
 - **Salt**: Unique per encryption (via OpenSSL)
 - **Random Generation**: `openssl rand` (cryptographically secure)
 
-The credentials file at `~/.clawdbot/credentials/monzo.json` is binary-encrypted and unreadable without your password.
+The credentials file at `~/.openclaw/credentials/monzo.json` is binary-encrypted and unreadable without your password.

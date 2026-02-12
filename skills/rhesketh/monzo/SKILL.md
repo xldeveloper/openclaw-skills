@@ -1,6 +1,7 @@
 ---
 name: monzo
 description: Access Monzo bank account - check balance, view transactions, manage pots, send feed notifications. For personal finance queries and banking automation.
+metadata: {"openclaw":{"emoji":"🏦","requires":{"env":["MONZO_KEYRING_PASSWORD"],"bins":["curl","jq","openssl","bc"]},"primaryEnv":"MONZO_KEYRING_PASSWORD"}}
 ---
 
 # Monzo Banking Skill
@@ -13,14 +14,13 @@ Before setting up this skill, you need:
 
 - **A Monzo account** (UK personal, joint, or business account)
 - **The Monzo app** installed on your phone (for SCA approval)
-- **Clawdbot** running with workspace access
+- **OpenClaw** running with workspace access
 - **Standard tools**: `curl`, `jq`, `openssl`, `bc` (pre-installed on most Linux systems)
 
 ## Quick Start (TL;DR)
 
 ```bash
-# 1. Add env var to Clawdbot config (~/.clawdbot/clawdbot.json):
-#    skills.entries.monzo.env.MONZO_KEYRING_PASSWORD = "your-secret-password"
+# 1. Set the MONZO_KEYRING_PASSWORD env var (see "Setting the Password" below)
 
 # 2. Create OAuth client at https://developers.monzo.com/
 #    - Set Confidentiality: Confidential
@@ -40,9 +40,15 @@ scripts/balance.sh
 
 ## Detailed Setup Guide
 
-### Step 1: Configure Clawdbot Environment
+### Step 1: Set the Encryption Password
 
-Add the encryption password to your Clawdbot config (`~/.clawdbot/clawdbot.json`):
+The `MONZO_KEYRING_PASSWORD` environment variable is used to encrypt your Monzo credentials at rest. Choose a strong, unique password and don't lose it — you'll need it if you ever move or restore the skill.
+
+There are several ways to provide this variable. Choose whichever fits your setup:
+
+**Option A: OpenClaw skill config** (simplest)
+
+Add to your OpenClaw config (e.g. `openclaw.json`):
 
 ```json5
 {
@@ -59,19 +65,42 @@ Add the encryption password to your Clawdbot config (`~/.clawdbot/clawdbot.json`
 }
 ```
 
-**Important:** This password encrypts your Monzo credentials at rest. Choose something secure and don't lose it — you'll need it if you ever move or restore the skill.
+Then restart: `openclaw gateway restart`
 
-After editing, restart Clawdbot:
+> **Note:** This stores the password in plaintext in the config file. Ensure the file has restrictive permissions (`chmod 600`) and is not checked into version control.
+
+**Option B: Shell environment** (keeps password out of config files)
+
+Add to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.):
+
 ```bash
-clawdbot gateway restart
+export MONZO_KEYRING_PASSWORD="choose-a-secure-password-here"
 ```
+
+Then restart your shell and OpenClaw.
+
+**Option C: systemd EnvironmentFile** (for server deployments)
+
+Create a secrets file (e.g. `/etc/openclaw/monzo.env`):
+
+```
+MONZO_KEYRING_PASSWORD=choose-a-secure-password-here
+```
+
+Set permissions: `chmod 600 /etc/openclaw/monzo.env`
+
+Reference it from your systemd unit with `EnvironmentFile=/etc/openclaw/monzo.env`.
+
+**Option D: Password manager / secrets manager**
+
+Use your preferred secrets tool to inject the env var at runtime. Any method that sets `MONZO_KEYRING_PASSWORD` in the process environment will work.
 
 ### Step 2: Create Monzo OAuth Client
 
 1. Go to **https://developers.monzo.com/** and sign in with your Monzo account
 2. Click **"Clients"** → **"New OAuth Client"**
 3. Fill in:
-   - **Name**: `Clawdbot` (or your preferred name)
+   - **Name**: `OpenClaw` (or your preferred name)
    - **Logo URL**: *(leave blank)*
    - **Redirect URLs**: `http://localhost` ← exactly this, no trailing slash
    - **Description**: *(leave blank)*
@@ -187,8 +216,8 @@ If you see `forbidden.insufficient_permissions`:
 - Then run `scripts/setup.sh --continue`
 
 If you see `MONZO_KEYRING_PASSWORD not set`:
-- The env var isn't configured in Clawdbot
-- Guide user to add it to `~/.clawdbot/clawdbot.json` under `skills.entries.monzo.env`
+- The env var isn't available in the process environment
+- Guide user to set it using one of the methods in Step 1 of the setup guide
 
 ---
 
@@ -299,21 +328,9 @@ scripts/webhooks.sh delete webhook_...
 
 ### "MONZO_KEYRING_PASSWORD not set"
 
-The env var isn't in Clawdbot's environment.
+The env var isn't available in the process environment.
 
-**Fix:** Add to `~/.clawdbot/clawdbot.json`:
-```json5
-{
-  skills: {
-    entries: {
-      "monzo": {
-        env: { "MONZO_KEYRING_PASSWORD": "your-password" }
-      }
-    }
-  }
-}
-```
-Then restart: `clawdbot gateway restart`
+**Fix:** Set `MONZO_KEYRING_PASSWORD` using any of the methods described in Step 1 of the setup guide, then restart OpenClaw.
 
 ### "Authorization code has been used"
 
@@ -370,7 +387,7 @@ skills/monzo/
     └── webhooks          # Webhook management
 ```
 
-**Credentials:** `~/.clawdbot/credentials/monzo.json` (encrypted)
+**Credentials:** `~/.openclaw/credentials/monzo.json` (encrypted, or `~/.clawdbot/credentials/monzo.json` on older installs)
 
 ---
 
