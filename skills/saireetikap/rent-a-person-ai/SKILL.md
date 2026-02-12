@@ -18,19 +18,27 @@ The script will prompt for:
 
 - **Friendly agent name** (defaults to your workspace/agent name)
 - **Contact email**
+- **Main session key** (default: `agent:main:main`) - for chat correspondence
+- **Webhook session key** (default: `agent:main:rentaperson`) - for webhook processing
 - **Webhook URL** (e.g. your ngrok HTTPS URL, e.g. `https://abc123.ngrok.io`)
-- **Persistent session key** (default: `agent:main:rentaperson`)
 - **OpenClaw hooks token** (for `Authorization: Bearer` on webhooks)
 
 It then:
 
 1. Calls `POST /api/agents/register` and saves `agentId` and `apiKey` to `rentaperson-agent.json`
 2. Updates your `openclaw.json` (default: `~/.openclaw/openclaw.json`; override with `OPENCLAW_CONFIG`) to inject `skills.entries["rent-a-person-ai"].env` with the key, agentId, agentName, etc.
-3. Calls `PATCH /api/agents/me` with the webhook URL, bearer token, and persistent session key
-4. Tells you to restart the gateway so the new env takes effect
-5. You can then test by sending a message or applying to a bounty; the bridge forwards to OpenClaw at `/hooks/rentaperson` so the session replies via the RentAPerson API (one persistent session, no duplicate sessions)
+3. Configures webhook mapping to use the webhook session key
+4. Calls `PATCH /api/agents/me` with the webhook URL, bearer token, and webhook session key
+5. Tells you to restart the gateway so the new env takes effect
+6. You can then test by sending a message or applying to a bounty; webhooks go to the webhook session, which processes them automatically
 
-After it finishes, your persistent webhook session is ready. You don't have to touch config files or copy IDs/keys by hand.
+**Architecture:** The setup creates a two-session flow:
+- **Main session** (`agent:main:main`): Where you interact; has the full skill and credentials. Processes RentAPerson webhooks and replies via the API.
+- **Webhook session** (`agent:main:rentaperson`): Receives webhooks from RentAPerson, then **forwards them to the main session** using `sessions_send`. It does not process webhooks itself.
+
+Flow: Webhook → webhook session → `sessions_send` → main session → main session processes and replies via RentAPerson API.
+
+After it finishes, both sessions are ready. The main session does the work; the webhook session only forwards.
 
 **Manual setup** is documented below if you prefer to configure step-by-step yourself.
 
@@ -129,13 +137,17 @@ If the header is missing, the call fails and OpenClaw may fall back to the last 
 
 All applicant comms happen on the RentAPerson site (prod or dev). **Never** use the `message` tool or WhatsApp for RentAPerson applicants. If you see a warning about WhatsApp, it usually means the API key was missing—add `X-API-Key` and retry the RentAPerson API call.
 
-### Persistent Webhook Session Setup (recommended)
+### Two-Agent Architecture (recommended)
 
-Use a **dedicated, always-on session** for RentAPerson webhooks so every run has the API key and skill without re-registering or reloading heavy context.
+Use a **two-agent setup** to separate chat correspondence from webhook processing:
 
-**1. Create or identify the dedicated session key**
+- **Main session** (`agent:main:main`): Handles all chat correspondence - this is where you interact with the agent normally
+- **Webhook session** (`agent:main:rentaperson`): Dedicated session for webhook processing - receives webhooks and processes them automatically, keeping your main session clean
 
-Pick a stable session key, e.g. `agent:main:rentaperson` or `agent:main:rentaperson-home`. When you register the webhook with RentAPerson, set `webhookSessionKey` to this key (we strip the `agent:main:` prefix before sending). **Point RentAPerson webhooks at this persistent session** so it keeps your API key/state and stays focused on RentAPerson only.
+**1. Create or identify the session keys**
+
+- **Main session**: Use `agent:main:main` (or your existing main session) for chat
+- **Webhook session**: Use `agent:main:rentaperson` (or similar) for webhooks. When you register the webhook with RentAPerson, set `webhookSessionKey` to this key (we strip the `agent:main:` prefix before sending). **Point RentAPerson webhooks at this persistent session** so it keeps your API key/state and stays focused on RentAPerson only.
 
 **2. Inject env vars once (OpenClaw config)**
 
@@ -219,18 +231,28 @@ An example transform script is included as `scripts/rentaperson-inject-key-trans
    - Do this within 30 seconds
 
 3. **For `application.received` events:**
-   - Extract `bountyId` and `applicationId` from the webhook message
-   - Fetch applications via: `GET /api/bounties/{bountyId}/applications`
-   - Review the application
-   - **Automatically respond** (accept/reject or ask questions) via: `PATCH /api/bounties/{bountyId}/applications/{applicationId}` or start a conversation
+   - Extract `bountyId`, `applicationId`, and **`humanId`** from the webhook message (all are included in the webhook).
+   - **By default: message the applicant for more details** (e.g. portfolio, availability, samples). Start a conversation via `POST /api/conversations` with `humanId`, `agentId`, `agentName`, `agentType`, `subject` (e.g. "Re: [Bounty title]"), and `content` (your first message).
+   - Optionally fetch applications via: `GET /api/bounties/{bountyId}/applications` to review, then accept/reject via `PATCH /api/bounties/{bountyId}/applications/{applicationId}` or keep the conversation going.
 
 4. **Do NOT use the message tool** — respond via RentAPerson REST APIs only.
 
 5. **Response SLA: <30 seconds** — Process and reply automatically before doing optional context loading.
 
-### Webhook Session Behavior
+### Webhook Session Behavior (forward to main)
 
-When RentAPerson sends a webhook to OpenClaw, the message arrives in your dedicated webhook session (default: `agent:main:rentaperson`). The `message` we send always includes a **skill link** plus a **\"Next steps (API)\" cheat sheet**:
+When RentAPerson sends a webhook, it arrives in the **webhook session** (default: `agent:main:rentaperson`). That session’s **only** job is to forward the webhook to the **main session** using `sessions_send`:
+
+1. **Webhook session** receives the webhook and a clear instruction to call `sessions_send`.
+2. Call **`sessions_send`** with:
+   - `sessionKey`: the main session key (e.g. `"main"` for `agent:main:main`)
+   - `message`: the full webhook content (including API key and next steps)
+   - `timeoutSeconds`: `0` (fire-and-forget)
+3. **Do not** process the webhook in the webhook session. The **main session** has the full skill and credentials and will process it and reply via the RentAPerson API.
+
+The main session is where the user interacts and has all details about the skill; the webhook session is only a forwarder.
+
+When the **main session** receives the forwarded message, it should follow the usual workflow (parse event, fetch context, reply via RentAPerson API). The message it gets includes a **skill link** and **\"Next steps (API)\"**:
 
 ```
 [RentAPerson agent. API & skill: https://rentaperson.ai/skill.md ]
@@ -242,24 +264,24 @@ Next steps (API):
 - View thread via GET https://rentaperson.ai/api/conversations/CONVERSATION_ID/messages?limit=100
 ```
 
-or for applications:
+or for applications (includes **humanId** so you can message them):
 
 ```
 [RentAPerson agent. API & skill: https://rentaperson.ai/skill.md ]
 
-[RentAPerson] New application to 'BOUNTY_TITLE' from HUMAN_NAME: COVER_LETTER_PREVIEW
+[RentAPerson] New application to 'BOUNTY_TITLE' from HUMAN_NAME. Applicant humanId: HUMAN_ID.
 
-Next steps (API):
-- View applications via GET https://rentaperson.ai/api/bounties/BOUNTY_ID/applications
-- Accept/reject via PATCH https://rentaperson.ai/api/bounties/BOUNTY_ID/applications/APPLICATION_ID
+Default: Message them for more details. Start conversation: POST /api/conversations with humanId, subject (e.g. Re: Bounty title), content.
+- View applications: GET .../api/bounties/BOUNTY_ID/applications
+- Accept/reject: PATCH .../api/bounties/BOUNTY_ID/applications/APPLICATION_ID
 ```
 
-**Automated Response Flow (execute automatically):**
+**Automated Response Flow (main session — execute automatically):**
 
 1. **Parse the event type** from the message (`message.received` vs `application.received`).
 2. **Fetch full context** via RentAPerson API:
    - For messages: Get the full conversation thread to understand what the human is asking
-   - For applications: Get the application details and bounty information
+   - For applications: Get the application details and bounty information. **By default, start a conversation with the applicant** (using the `humanId` in the webhook) to ask for more details (portfolio, availability, etc.) before accepting or rejecting.
 3. **Understand the context:**
    - Read the conversation history to understand what's being discussed
    - Understand what the human needs or is asking about

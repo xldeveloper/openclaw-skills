@@ -47,12 +47,19 @@ console.log(`[bridge] Starting...`);
 console.log(`[bridge] Default API Base: ${DEFAULT_API_BASE}`);
 console.log(`[bridge] OpenClaw: ${OPENCLAW_URL}`);
 console.log(`[bridge] Agent: ${AGENT_NAME || AGENT_ID || 'unknown'}`);
+if (!credentials.mainSessionKey) {
+  console.log(`[bridge] Note: mainSessionKey not in credentials; will use agent:main:main. Re-run setup to set main session.`);
+}
 
-function buildMessage(payload) {
-  const event = payload.event;
+/**
+ * Build the message that the MAIN session will process (full webhook context + API key).
+ * This is what the webhook session forwards via sessions_send.
+ */
+function buildMessageForMainSession(payload) {
+  const event = payload.event || 'unknown';
   const apiBase = payload.apiBase && payload.apiBase.startsWith('http') ? payload.apiBase.replace(/\/+$/, '') : DEFAULT_API_BASE;
   const skillUrl = `${apiBase}/skill.md`;
-  
+
   let task;
   if (event === 'message.received') {
     const convId = payload.conversationId || '';
@@ -67,73 +74,124 @@ View thread: GET ${apiBase}/api/conversations/${convId}/messages?limit=100`;
     const appId = payload.applicationId || '';
     const title = payload.bountyTitle || 'Bounty';
     const name = payload.humanName || 'Someone';
+    const humanId = payload.humanId || '';
+    const coverPreview = payload.coverLetterPreview || '';
     task = `New application to "${title}" from ${name}
+Applicant humanId: ${humanId}
+Cover: ${coverPreview}
 
-View: GET ${apiBase}/api/bounties/${bountyId}/applications
+**Default: Message them for more details** (e.g. portfolio, availability, samples). Use their humanId to start a conversation.
+
+View applications: GET ${apiBase}/api/bounties/${bountyId}/applications
+Start conversation (message applicant): POST ${apiBase}/api/conversations
+  Body: { "humanId": "${humanId}", "agentId": "<use your agentId from credentials>", "agentName": "<use your agentName>", "agentType": "openclaw", "subject": "Re: ${title}", "content": "Hi! Thanks for applying. Can you share [portfolio/availability/samples]?" }
 Accept/reject: PATCH ${apiBase}/api/bounties/${bountyId}/applications/${appId}`;
   } else {
     task = `Webhook event: ${event}\n\nPayload: ${JSON.stringify(payload, null, 2)}`;
   }
-  
-  // CRITICAL: Inject API key directly in message so agent can use it
+
   const apiKeyNote = `\n\n🔑 API KEY: ${API_KEY}\nUse this header: X-API-Key: ${API_KEY}`;
-  
+
   return `[RentAPerson agent. API docs: ${skillUrl}]
 
 ${task}${apiKeyNote}`;
 }
 
+/**
+ * Build the message sent TO the webhook session: instruct it to forward to main via sessions_send.
+ * Main session has the full skill and is where the user interacts; webhook session only forwards.
+ */
+function buildMessage(payload) {
+  const messageForMain = buildMessageForMainSession(payload);
+  const mainKey = normalizeSessionKeyForOpenClaw(credentials.mainSessionKey || 'agent:main:main');
+
+  return `You are the RentAPerson webhook receiver. Your ONLY job is to forward this webhook to the main session using sessions_send.
+
+**Do this now:**
+1. Call \`sessions_send\` with:
+   - \`sessionKey\`: "${mainKey}"
+   - \`message\`: (the content below between the --- lines)
+   - \`timeoutSeconds\`: 0 (fire-and-forget)
+2. Do NOT process the webhook yourself. The main session has the full skill and will process it and reply via the RentAPerson API.
+
+**Message to send to main session:**
+---
+${messageForMain}
+---`;
+}
+
+/**
+ * Strip agent:main: prefix if present - OpenClaw adds it automatically
+ * This prevents double prefixing: agent:main:agent:main:main -> agent:main:main
+ */
+function normalizeSessionKeyForOpenClaw(sessionKey) {
+  const OPENCLAW_SESSION_PREFIX = 'agent:main:';
+  const trimmed = sessionKey.trim();
+  // If it already starts with agent:main:, strip it (OpenClaw will add it back)
+  if (trimmed.startsWith(OPENCLAW_SESSION_PREFIX)) {
+    return trimmed.slice(OPENCLAW_SESSION_PREFIX.length);
+  }
+  return trimmed;
+}
+
 function forwardToOpenClaw(payload, callback) {
   const message = buildMessage(payload);
   
-  // Use persistent session key to reuse the same session
-  const sessionKey = credentials.sessionKey || 'agent:main:rentaperson';
+  // Use webhook session key (dedicated session for webhook processing)
+  // This session will spawn subagents to process webhooks automatically
+  const rawSessionKey = credentials.webhookSessionKey || credentials.sessionKey || 'agent:main:rentaperson';
+  // Strip agent:main: prefix - OpenClaw adds it automatically
+  const sessionKey = normalizeSessionKeyForOpenClaw(rawSessionKey);
   
   const body = {
     message,
     name: 'RentAPerson',
-    sessionKey: sessionKey, // CRITICAL: Reuse persistent session
+    sessionKey: sessionKey, // CRITICAL: Use dedicated webhook session (normalized)
     wakeMode: 'now',
     deliver: false, // Don't send to messaging channels
   };
   
-  // Use mapped hook to avoid "untrusted source" notice (requires hooks.mappings.rentaperson in openclaw.json)
-  const url = new URL(`${OPENCLAW_URL}/hooks/rentaperson`);
-  const options = {
-    method: 'POST',
-    hostname: url.hostname,
-    port: url.port || (url.protocol === 'https:' ? 443 : 80),
-    path: url.pathname,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(OPENCLAW_TOKEN && { 'Authorization': `Bearer ${OPENCLAW_TOKEN}` }),
-    },
+  // Try /hooks/rentaperson first if mapping is configured (match.path = rentaperson); else use /hooks/agent
+  const client = (OPENCLAW_URL || '').startsWith('https') ? require('https') : http;
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(OPENCLAW_TOKEN && { 'Authorization': `Bearer ${OPENCLAW_TOKEN}` }),
   };
-  
-  const client = url.protocol === 'https:' ? require('https') : http;
-  
-  console.log(`[bridge] Forwarding to: ${OPENCLAW_URL}/hooks/rentaperson`);
-  console.log(`[bridge] Using sessionKey: "${sessionKey}"`);
-  console.log(`[bridge] Payload:`, JSON.stringify({ ...body, message: body.message.substring(0, 100) + '...' }, null, 2));
-  
-  const req = client.request(options, (res) => {
-    let data = '';
-    res.on('data', chunk => data += chunk);
-    res.on('end', () => {
-      console.log(`[bridge] OpenClaw → ${res.statusCode}`);
-      if (data) console.log(`[bridge] Response:`, data.substring(0, 200));
-      callback(null, { statusCode: res.statusCode, body: data });
+
+  function post(path, done) {
+    const url = new URL(`${OPENCLAW_URL}${path}`);
+    const options = {
+      method: 'POST',
+      hostname: url.hostname,
+      port: url.port || (url.protocol === 'https:' ? 443 : 80),
+      path: url.pathname,
+      headers,
+    };
+    console.log(`[bridge] Forwarding to: ${OPENCLAW_URL}${path}`);
+    console.log(`[bridge] Using sessionKey: "${sessionKey}"`);
+    const req = client.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        console.log(`[bridge] OpenClaw → ${res.statusCode}`);
+        if (data) console.log(`[bridge] Response:`, data.substring(0, 200));
+        if (res.statusCode === 404 && path === '/hooks/rentaperson') {
+          console.log(`[bridge] /hooks/rentaperson not mapped; using /hooks/agent`);
+          post('/hooks/agent', done);
+        } else {
+          done(null, { statusCode: res.statusCode, body: data });
+        }
+      });
     });
-  });
-  
-  req.on('error', (err) => {
-    console.error(`[bridge] OpenClaw request failed:`, err.message);
-    console.error(`[bridge] Check if OpenClaw is running on ${OPENCLAW_URL}`);
-    callback(err);
-  });
-  
-  req.write(JSON.stringify(body));
-  req.end();
+    req.on('error', (err) => {
+      console.error(`[bridge] OpenClaw request failed:`, err.message);
+      done(err);
+    });
+    req.write(JSON.stringify(body));
+    req.end();
+  }
+
+  post('/hooks/rentaperson', callback);
 }
 
 const server = http.createServer((req, res) => {
@@ -167,9 +225,10 @@ const server = http.createServer((req, res) => {
           res.end(JSON.stringify({ error: 'Failed to forward', message: err.message }));
           return;
         }
-        
-        res.writeHead(result.statusCode, { 'Content-Type': 'application/json' });
-        res.end(result.body);
+        const statusCode = result.statusCode || 200;
+        const body = result.body != null && result.body !== '' ? result.body : '{}';
+        res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+        res.end(body);
       });
     } catch (e) {
       console.error('[bridge] Parse error:', e);

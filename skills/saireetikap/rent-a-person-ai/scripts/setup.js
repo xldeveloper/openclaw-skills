@@ -86,6 +86,65 @@ async function patchAgentMe(apiBase, apiKey, body) {
   return res.json();
 }
 
+async function getAgentMe(apiBase, apiKey) {
+  const res = await fetch(`${apiBase}/api/agents/me`, {
+    headers: {
+      'X-API-Key': apiKey,
+    },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`GET /api/agents/me failed ${res.status}: ${text}`);
+  }
+  return res.json();
+}
+
+/**
+ * Strip agent:main: prefix if present - OpenClaw adds it automatically
+ * This prevents double prefixing: agent:main:agent:main:main -> agent:main:main
+ */
+function normalizeSessionKeyForOpenClaw(sessionKey) {
+  const OPENCLAW_SESSION_PREFIX = 'agent:main:';
+  const trimmed = sessionKey.trim();
+  // If it already starts with agent:main:, strip it (OpenClaw will add it back)
+  if (trimmed.startsWith(OPENCLAW_SESSION_PREFIX)) {
+    return trimmed.slice(OPENCLAW_SESSION_PREFIX.length);
+  }
+  return trimmed;
+}
+
+async function sendMessageToOpenClawSession(sessionKey, message, openclawUrl, token) {
+  const url = `${openclawUrl}/hooks/agent`;
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` }),
+  };
+  // Strip agent:main: prefix - OpenClaw adds it automatically
+  const normalizedSessionKey = normalizeSessionKeyForOpenClaw(sessionKey);
+  const body = {
+    message,
+    name: 'RentAPerson Setup',
+    sessionKey: normalizedSessionKey,
+    wakeMode: 'now',
+    deliver: false, // Don't send to messaging channels
+  };
+  
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Failed to send message: ${res.status} ${text}`);
+    }
+    return true;
+  } catch (err) {
+    throw new Error(`Error sending message to session: ${err.message}`);
+  }
+}
+
 function loadOpenClawConfig() {
   const raw = safeReadFile(OPENCLAW_CONFIG_PATH);
   if (!raw) return {};
@@ -210,6 +269,36 @@ function safeFileExists(filePath) {
   }
 }
 
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+async function checkOpenClawInstalled() {
+  return new Promise((resolve) => {
+    const child = spawn('openclaw', ['--version'], { stdio: 'pipe', shell: true });
+    child.on('close', (code) => resolve(code === 0));
+    child.on('error', () => resolve(false));
+    setTimeout(() => {
+      child.kill();
+      resolve(false);
+    }, 2000);
+  });
+}
+
+async function checkGatewayRunning() {
+  return new Promise((resolve) => {
+    const client = net.createConnection({ port: 18789, host: '127.0.0.1' }, () => {
+      client.end();
+      resolve(true);
+    });
+    client.on('error', () => resolve(false));
+    setTimeout(() => {
+      client.destroy();
+      resolve(false);
+    }, 1000);
+  });
+}
+
 function printWelcome() {
   console.log('\n' + '='.repeat(70));
   console.log('  🎉  Thank you for installing the RentAPerson skill!');
@@ -226,6 +315,46 @@ async function main() {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
   printWelcome();
+  
+  // Pre-flight checks
+  console.log('🔍 Pre-flight checks...');
+  console.log('─'.repeat(70));
+  const openclawInstalled = await checkOpenClawInstalled();
+  if (!openclawInstalled) {
+    console.warn('⚠️  Warning: OpenClaw CLI not found in PATH');
+    console.warn('   Make sure OpenClaw is installed: https://docs.openclaw.ai/install');
+    console.warn('   Setup will continue, but gateway restart may fail.\n');
+  } else {
+    console.log('✓ OpenClaw CLI found');
+  }
+  
+  const gatewayRunning = await checkGatewayRunning();
+  if (gatewayRunning) {
+    console.log('✓ OpenClaw gateway is running on port 18789');
+  } else {
+    console.warn('⚠️  OpenClaw gateway not running (port 18789 not accessible)');
+    console.warn('   Start it with: openclaw gateway start');
+    console.warn('   Or restart after setup completes.\n');
+  }
+  
+  const configExists = safeFileExists(OPENCLAW_CONFIG_PATH);
+  if (!configExists) {
+    console.log('ℹ️  Config file will be created:', OPENCLAW_CONFIG_PATH);
+  } else {
+    console.log('✓ Config file exists:', OPENCLAW_CONFIG_PATH);
+  }
+  console.log('');
+  
+  // Show OpenClaw profile and config path
+  const profile = process.env.OPENCLAW_PROFILE || '';
+  console.log('📌 OpenClaw configuration:');
+  if (profile) {
+    console.log(`   Profile: ${profile}`);
+  } else {
+    console.log('   Profile: (default)');
+  }
+  console.log(`   Config: ${OPENCLAW_CONFIG_PATH}`);
+  console.log('');
 
   // 1. Base URL (prod vs dev)
   console.log('📋 Step 1: Choose your environment');
@@ -243,32 +372,48 @@ async function main() {
   console.log('👤 Step 2: Agent details');
   console.log('─'.repeat(70));
   const agentName = await ask(rl, 'Friendly agent name', 'my-openclaw-agent');
-  const contactEmail = await ask(rl, 'Contact email', '');
+  let contactEmail = await ask(rl, 'Contact email', '');
   if (!contactEmail) {
     console.error('\n❌ Error: Contact email is required.');
     rl.close();
     process.exit(1);
   }
+  if (!isValidEmail(contactEmail)) {
+    console.warn('⚠️  Warning: Email format looks invalid. Continuing anyway...');
+    console.warn(`   Email: ${contactEmail}\n`);
+  }
   console.log(`✓ Agent name: ${agentName}`);
   console.log(`✓ Contact email: ${contactEmail}\n`);
+
+  // Resolve skill directory once (used throughout setup)
+  const skillDir = path.resolve(__dirname, '..');
 
   // 3. Session configuration
   console.log('🔑 Step 3: Session configuration');
   console.log('─'.repeat(70));
-  console.log('Session key:');
-  console.log('  • Use existing session: Point webhooks to your current session (keeps all context)');
-  console.log('  • Create dedicated session: New session just for webhooks (recommended: agent:main:rentaperson)');
-  console.log('  • Leave empty: OpenClaw creates random session each webhook (not recommended)');
+  console.log('Architecture: Two-agent setup');
+  console.log('  • Main session: Handles all chat correspondence');
+  console.log('  • Webhook subagent: Processes webhooks automatically');
   console.log('');
-  console.log('  Examples:');
-  console.log('    - agent:main:main (your main session - keeps everything)');
-  console.log('    - agent:main:rentaperson (dedicated webhook session - recommended)');
-  console.log('    - agent:main:your-existing-session (any existing session)');
+  console.log('Main session key:');
+  console.log('  • Your primary chat session (recommended: agent:main:main)');
+  console.log('  • This is where you interact with the agent normally');
   console.log('');
-  const sessionKeyInput = await ask(rl, 'Session key (or press Enter for dedicated: agent:main:rentaperson)', 'agent:main:rentaperson');
-  const sessionKey = sessionKeyInput || 'agent:main:rentaperson';
+  const mainSessionKeyInput = await ask(rl, 'Main session key (or press Enter for: agent:main:main)', 'agent:main:main');
+  const mainSessionKey = mainSessionKeyInput || 'agent:main:main';
+  
+  console.log('');
+  console.log('Webhook session key:');
+  console.log('  • Dedicated session for webhook processing (recommended: agent:main:rentaperson)');
+  console.log('  • Webhooks will spawn subagents from this session');
+  console.log('  • This session stays focused on RentAPerson webhook handling');
+  console.log('');
+  const webhookSessionKeyInput = await ask(rl, 'Webhook session key (or press Enter for: agent:main:rentaperson)', 'agent:main:rentaperson');
+  const webhookSessionKey = webhookSessionKeyInput || 'agent:main:rentaperson';
+  
   const hooksToken = await ask(rl, 'OpenClaw hooks token (for Authorization: Bearer)', '');
-  console.log(`✓ Session key: ${sessionKey}`);
+  console.log(`✓ Main session: ${mainSessionKey}`);
+  console.log(`✓ Webhook session: ${webhookSessionKey}`);
   if (hooksToken) {
     console.log(`✓ Hooks token: ${'*'.repeat(Math.min(hooksToken.length, 20))}...`);
   }
@@ -339,7 +484,6 @@ async function main() {
     // Transform approach: copy transform file
     const stateDir = getStateDir();
     const transformsDir = path.join(stateDir, 'hooks', 'transforms');
-    const skillDir = path.resolve(__dirname, '..');
     const examplePath = path.join(skillDir, 'scripts', 'rentaperson-inject-key-transform.example.js');
     const destPath = path.join(transformsDir, TRANSFORM_FILENAME);
 
@@ -395,7 +539,6 @@ async function main() {
   }
 
   // Store credentials in memory (only write to file if user wants)
-  const skillDir = path.resolve(__dirname, '..');
   const credentialsPath = path.join(skillDir, 'rentaperson-agent.json');
   const credentials = {
     agentId,
@@ -403,7 +546,8 @@ async function main() {
     agentName,
     contactEmail,
     webhookUrl: webhookUrl || (useBridge ? `http://127.0.0.1:${bridgePort || 3001}` : ''),
-    sessionKey,
+    mainSessionKey,
+    webhookSessionKey,
     apiBase,
     bridgePort: useBridge ? (bridgePort || 3001) : undefined,
     useBridge,
@@ -449,6 +593,11 @@ async function main() {
   if (!config.skills) config.skills = {};
   if (!config.skills.entries) config.skills.entries = {};
   if (!config.skills.entries['rent-a-person-ai']) config.skills.entries['rent-a-person-ai'] = {};
+  
+  // Ensure skill is enabled so gateway loads SKILL.md and instructions
+  config.skills.entries['rent-a-person-ai'].enabled = true;
+  
+  // Set env vars (API key, agent details) so webhook sessions have them
   config.skills.entries['rent-a-person-ai'].env = {
     RENTAPERSON_API_KEY: apiKey,
     RENTAPERSON_AGENT_ID: agentId,
@@ -456,37 +605,65 @@ async function main() {
     RENTAPERSON_AGENT_TYPE: 'openclaw',
     ...(config.skills.entries['rent-a-person-ai'].env || {}),
   };
+  
+  // Ensure skill directory is discoverable by OpenClaw
+  // OpenClaw auto-discovers from: <workspace>/skills, ~/.openclaw/skills, or skills.load.extraDirs
+  const stateDir = getStateDir();
+  const managedSkillsDir = path.join(stateDir, 'skills');
+  const skillName = 'rent-a-person-ai';
+  const managedSkillPath = path.join(managedSkillsDir, skillName);
+  const skillInManaged = skillDir === managedSkillPath || fs.existsSync(path.join(managedSkillPath, 'SKILL.md'));
+  
+  // Check if skill is in workspace (would be <workspace>/skills/rent-a-person-ai)
+  const workspaceDir = config.agents?.defaults?.workspace || path.join(stateDir, 'workspace');
+  const workspaceSkillsDir = path.join(workspaceDir, 'skills');
+  const workspaceSkillPath = path.join(workspaceSkillsDir, skillName);
+  const skillInWorkspace = skillDir === workspaceSkillPath || fs.existsSync(path.join(workspaceSkillPath, 'SKILL.md'));
+  
+  if (!skillInManaged && !skillInWorkspace) {
+    // Skill is not in a standard location; add to extraDirs so OpenClaw can find it
+    if (!config.skills.load) config.skills.load = {};
+    if (!Array.isArray(config.skills.load.extraDirs)) config.skills.load.extraDirs = [];
+    if (!config.skills.load.extraDirs.includes(skillDir)) {
+      config.skills.load.extraDirs.push(skillDir);
+      console.log(`✓ Added skill directory to skills.load.extraDirs: ${skillDir}`);
+    }
+  } else {
+    console.log(`✓ Skill directory is in standard location (will be auto-discovered)`);
+  }
 
-  // Configure hooks mapping for /hooks/rentaperson endpoint
-  // OpenClaw expects hooks.mappings to be an ARRAY of { path, action, ... } (not an object)
+  // Configure hooks mapping for POST /hooks/rentaperson (see docs: match.path = URL segment)
+  // Config examples: https://docs.openclaw.ai/gateway/configuration-examples — mappings array, match: { path: "name" }
   if (!config.hooks) config.hooks = {};
   if (!config.hooks.enabled) config.hooks.enabled = true;
   if (!config.hooks.token && hooksToken) config.hooks.token = hooksToken;
   if (!config.hooks.path) config.hooks.path = '/hooks';
 
-  // Normalize mappings to array. OpenClaw expects array; mapping key is "name" (not "path") for POST /hooks/<name>
   if (!Array.isArray(config.hooks.mappings)) {
     config.hooks.mappings = typeof config.hooks.mappings === 'object' && config.hooks.mappings !== null
-      ? Object.entries(config.hooks.mappings).map(([p, v]) => ({ name: p, ...v }))
+      ? Object.entries(config.hooks.mappings).map(([p, v]) => ({ match: { path: p }, ...v }))
       : [];
   }
-  config.hooks.mappings.forEach((m) => delete m.path); // schema does not allow "path"
-  let rentapersonMapping = config.hooks.mappings.find((m) => m.name === HOOK_NAME);
+  let rentapersonMapping = config.hooks.mappings.find(
+    (m) => (m.match && m.match.path === HOOK_NAME) || m.name === HOOK_NAME
+  );
   if (!rentapersonMapping) {
-    rentapersonMapping = { name: HOOK_NAME };
+    rentapersonMapping = { match: { path: HOOK_NAME }, name: 'RentAPerson' };
     config.hooks.mappings.push(rentapersonMapping);
-  } else if (!rentapersonMapping.name) {
-    rentapersonMapping.name = HOOK_NAME;
+  } else {
+    if (!rentapersonMapping.match) rentapersonMapping.match = {};
+    rentapersonMapping.match.path = HOOK_NAME;
+    if (!rentapersonMapping.name) rentapersonMapping.name = 'RentAPerson';
   }
 
-  // Configure mapped hook to avoid security notice
   rentapersonMapping.action = 'agent';
   rentapersonMapping.allowUnsafeExternalContent = true;
-  rentapersonMapping.sessionKey = sessionKey;
+  // Use normalized key (suffix only) so OpenClaw doesn't double-prefix
+  rentapersonMapping.sessionKey = normalizeSessionKeyForOpenClaw(webhookSessionKey);
+  rentapersonMapping.wakeMode = 'now';
 
   if (!useBridge) {
-    // Transform approach: also configure transform module
-    const stateDir = getStateDir();
+    // Transform approach: also configure transform module (reuse stateDir from above)
     const transformsDir = path.join(stateDir, 'hooks', 'transforms');
     config.hooks.transformsDir = config.hooks.transformsDir || path.resolve(transformsDir);
     if (!rentapersonMapping.transform) {
@@ -496,14 +673,31 @@ async function main() {
     }
   }
 
+  // Verify SKILL.md exists so OpenClaw can load the skill instructions
+  const skillMdPath = path.join(skillDir, 'SKILL.md');
+  if (!fs.existsSync(skillMdPath)) {
+    console.warn(`⚠️  Warning: SKILL.md not found at ${skillMdPath}`);
+    console.warn('  OpenClaw needs SKILL.md to load skill instructions. Make sure the skill directory is correct.\n');
+  } else {
+    console.log(`✓ Verified SKILL.md exists at ${skillMdPath}`);
+  }
+
   try {
     saveOpenClawConfig(config);
     console.log(`✓ Updated ${OPENCLAW_CONFIG_PATH}`);
-    console.log(`  • Skill environment variables configured`);
+    console.log(`  • Skill enabled: rent-a-person-ai`);
+    console.log(`  • Skill environment variables configured (RENTAPERSON_API_KEY, etc.)`);
+    console.log(`  • Skill directory discoverable (in standard location or extraDirs)`);
     console.log(`  • Hooks mapping configured: /hooks/${HOOK_NAME} (allowUnsafeExternalContent: true)`);
     if (!useBridge) {
       console.log(`  • Transform module configured`);
     }
+    console.log('');
+    console.log('⚠️  IMPORTANT: Restart OpenClaw gateway so it loads the skill and new config.');
+    console.log('   The gateway must restart to:');
+    console.log('   - Discover and load the RentAPerson skill (SKILL.md)');
+    console.log('   - Apply the env vars (RENTAPERSON_API_KEY) to webhook sessions');
+    console.log('   - Register the /hooks/rentaperson mapping');
     console.log('');
   } catch (e) {
     console.warn(`⚠️  Failed to update openclaw.json: ${e.message}`);
@@ -527,7 +721,7 @@ async function main() {
       const patch = {
         webhookUrl: finalWebhookUrl,
         webhookFormat: 'openclaw',
-        webhookSessionKey: sessionKey.trim(),
+        webhookSessionKey: webhookSessionKey.trim(),
       };
       if (hooksToken) patch.webhookBearerToken = hooksToken.trim();
       try {
@@ -549,6 +743,9 @@ async function main() {
   rl2.close();
   if (doRestart) {
     const profile = process.env.OPENCLAW_PROFILE || '';
+    if (profile) {
+      console.log(`📌 Using OpenClaw profile: ${profile}`);
+    }
     const args = profile ? ['--profile', profile, 'gateway', 'restart'] : ['gateway', 'restart'];
     console.log(`Running: openclaw ${args.join(' ')}`);
     try {
@@ -557,19 +754,156 @@ async function main() {
         child.on('close', (code) => (code === 0 ? resolve() : reject(new Error(`openclaw exited ${code}`))));
       });
       console.log('✓ Gateway restart completed.\n');
+      console.log('📋 To watch gateway logs:');
+      console.log('   openclaw logs --follow');
+      console.log('   # Or tail directly: tail -f /tmp/openclaw/openclaw-*.log');
+      console.log('');
     } catch (err) {
       console.warn(`⚠️  Gateway restart failed: ${err.message}`);
       console.warn('  Restart manually when ready: openclaw gateway restart\n');
+      console.log('📋 To watch gateway logs after restart:');
+      console.log('   openclaw logs --follow');
+      console.log('   # Or tail directly: tail -f /tmp/openclaw/openclaw-*.log');
+      console.log('');
     }
   } else {
     console.log('⏭️  Skipped restart. Restart manually when ready: openclaw gateway restart\n');
+    console.log('📋 To watch gateway logs after restart:');
+    console.log('   openclaw logs --follow');
+    console.log('   # Or tail directly: tail -f /tmp/openclaw/openclaw-*.log');
+    console.log('');
   }
 
-  // 10. Next steps
+  // 10. Send SKILL.md to sessions (optional)
+  console.log('📚 Step 9: Loading skill documentation into sessions');
+  console.log('─'.repeat(70));
+  const rl3 = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const doLoadSkill = await askYesNo(rl3, 'Send SKILL.md documentation to sessions? (recommended)', true);
+  rl3.close();
+  if (doLoadSkill) {
+    const skillMdPath = path.join(skillDir, 'SKILL.md');
+    if (fs.existsSync(skillMdPath)) {
+      try {
+        const skillContent = fs.readFileSync(skillMdPath, 'utf8');
+        const openclawUrl = process.env.OPENCLAW_URL || 'http://127.0.0.1:18789';
+        
+        // Include API credentials in the message so agent knows them immediately
+        const credentialsSection = `🔑 Your RentAPerson Credentials (use these for all API calls):
+
+- **API Key**: ${apiKey}
+- **Agent ID**: ${agentId}
+- **Agent Name**: ${agentName}
+- **API Base URL**: ${apiBase}
+- **Webhook Session**: ${webhookSessionKey}
+
+**IMPORTANT**: Use the API key in the \`X-API-Key\` header for ALL RentAPerson API calls.
+Example: \`curl -H "X-API-Key: ${apiKey}" "${apiBase}/api/conversations"\`
+
+---
+`;
+        
+        const message = `📚 RentAPerson Skill Documentation
+
+${credentialsSection}
+
+This is the complete skill documentation for RentAPerson. Read this carefully - it contains all the APIs, workflows, and instructions you need to help users hire humans for real-world tasks.
+
+${skillContent}
+
+---
+Setup complete! You now have access to all RentAPerson APIs and can help users:
+- Search for humans by skill and budget
+- Post bounties (jobs) for humans to apply to
+- Accept/reject applications
+- Book humans directly
+- Communicate via conversations
+- Manage calendar events
+- Leave reviews
+
+Your credentials are shown above. Use the API key in the X-API-Key header for all API calls.`;
+        
+        // Send to main session
+        console.log(`Sending SKILL.md to main session: ${mainSessionKey}...`);
+        await sendMessageToOpenClawSession(mainSessionKey, message, openclawUrl, hooksToken);
+        console.log('✓ Skill documentation loaded into main session');
+        
+        // Also send directly to webhook session
+        const webhookMessage = `📚 RentAPerson Skill Documentation & Credentials
+
+${credentialsSection}
+
+This is the complete skill documentation for RentAPerson. This session handles webhook events automatically.
+
+${skillContent}
+
+---
+This webhook session is configured to automatically process RentAPerson webhooks (messages and applications).
+Your credentials are shown above. Use the API key in the X-API-Key header for all API calls.`;
+        
+        console.log(`Sending SKILL.md to webhook session: ${webhookSessionKey}...`);
+        await sendMessageToOpenClawSession(webhookSessionKey, webhookMessage, openclawUrl, hooksToken);
+        console.log('✓ Skill documentation loaded into webhook session');
+        console.log(`  Main session: ${mainSessionKey}`);
+        console.log(`  Webhook session: ${webhookSessionKey}\n`);
+        
+        // Note about double-prefix issue
+        console.log('⚠️  Note: If you see a session named "agent:main:agent:main:rentaperson",');
+        console.log('   that is a stale session from before the fix. The correct session is:');
+        console.log(`   ${webhookSessionKey}`);
+        console.log('   New webhooks will use the correct session.\n');
+      } catch (err) {
+        console.warn(`⚠️  Failed to send skill documentation: ${err.message}`);
+        console.warn('  You can manually send SKILL.md to your sessions later.\n');
+      }
+    } else {
+      console.warn(`⚠️  SKILL.md not found at ${skillMdPath}`);
+      console.warn('  Skipping skill documentation load.\n');
+    }
+  } else {
+    console.log('⏭️  Skipped loading skill documentation.\n');
+  }
+
+  // 11. Verification (optional)
+  console.log('✅ Step 10: Verification (optional)');
+  console.log('─'.repeat(70));
+  const rl4 = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const doVerify = await askYesNo(rl4, 'Verify webhook registration? (checks RentAPerson API)', false);
+  rl4.close();
+  if (doVerify && finalWebhookUrl && apiKey) {
+    try {
+      const me = await getAgentMe(apiBase, apiKey);
+      if (me?.webhookUrl === finalWebhookUrl) {
+        console.log('✓ Webhook URL registered correctly');
+      } else {
+        console.warn(`⚠️  Webhook URL mismatch:`);
+        console.warn(`   Expected: ${finalWebhookUrl}`);
+        console.warn(`   Found: ${me?.webhookUrl || '(not set)'}`);
+      }
+      if (me?.webhookSessionKey === webhookSessionKey) {
+        console.log('✓ Webhook session key registered correctly');
+      } else {
+        console.warn(`⚠️  Webhook session key mismatch:`);
+        console.warn(`   Expected: ${webhookSessionKey}`);
+        console.warn(`   Found: ${me?.webhookSessionKey || '(not set)'}`);
+      }
+    } catch (err) {
+      console.warn(`⚠️  Verification failed: ${err.message}`);
+    }
+    console.log('');
+  }
+
+  // 12. Next steps
   console.log('✨ Setup complete! Next steps:');
   console.log('═'.repeat(70));
+  
+  console.log('\n📋 Monitor gateway logs:');
+  console.log('   openclaw logs --follow');
+  console.log('   # Or tail directly: tail -f /tmp/openclaw/openclaw-*.log');
+  console.log('   # Look for: "Loaded skill: rent-a-person-ai" and webhook activity');
+  console.log('');
+  
   if (useBridge) {
-    console.log('\n📦 To start the bridge service:');
+    console.log('📦 To start the bridge service:');
     console.log('');
     console.log(`   1. cd ${path.join(skillDir, 'bridge')}`);
     if (safeFileExists(credentialsPath)) {
@@ -609,8 +943,42 @@ async function main() {
   }
   console.log('');
   console.log('═'.repeat(70));
+  console.log('📋 Setup Summary');
+  console.log('═'.repeat(70));
+  console.log(`   Agent ID: ${agentId}`);
+  console.log(`   Agent Name: ${agentName}`);
+  console.log(`   API Base: ${apiBase}`);
+  console.log(`   Main Session: ${mainSessionKey}`);
+  console.log(`   Webhook Session: ${webhookSessionKey}`);
+  console.log(`   Webhook URL: ${finalWebhookUrl || '(not set - configure after exposing bridge/gateway)'}`);
+  console.log(`   Method: ${useBridge ? 'Bridge service' : 'Transform'}`);
+  if (useBridge) {
+    console.log(`   Bridge Port: ${bridgePort || 3001}`);
+  }
+  console.log('');
+  console.log('═'.repeat(70));
   console.log('🎉 Your RentAPerson agent is ready to go!');
   console.log('═'.repeat(70));
+  console.log('');
+  console.log('💡 Quick test command (after starting bridge/gateway and ngrok):');
+  console.log('');
+  if (useBridge) {
+    console.log(`   curl -X POST http://127.0.0.1:${bridgePort || 3001} \\`);
+  } else {
+    console.log(`   curl -X POST http://127.0.0.1:18789/hooks/rentaperson \\`);
+  }
+  console.log('     -H "Content-Type: application/json" \\');
+  console.log('     -d \'{"event":"message.received","agentId":"' + agentId + '","conversationId":"test","humanId":"test","contentPreview":"Hello"}\'');
+  console.log('');
+  console.log('🔍 After restart, verify in logs:');
+  console.log('   1. Skill loaded: grep "rent-a-person-ai" /tmp/openclaw/openclaw-*.log');
+  console.log('   2. Hook registered: grep "rentaperson" /tmp/openclaw/openclaw-*.log');
+  console.log('   3. Or use: openclaw logs --follow | grep -E "skill|rentaperson"');
+  console.log('');
+  console.log('📚 Need help? See:');
+  console.log('   - INSTALLATION.md for detailed setup');
+  console.log('   - scripts/verify-setup.md for troubleshooting');
+  console.log('   - SKILL.md for API reference');
   console.log('');
 }
 
