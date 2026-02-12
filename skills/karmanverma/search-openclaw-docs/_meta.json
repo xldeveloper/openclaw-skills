@@ -1,13 +1,18 @@
 {
   "owner": "karmanverma",
   "slug": "search-openclaw-docs",
-  "displayName": "Search OpenClaw Docs",
+  "displayName": "OpenClaw Docs Search + Config Patterns",
   "latest": {
-    "version": "2.2.0",
-    "publishedAt": 1770736122035,
-    "commit": "https://github.com/openclaw/skills/commit/8bb0f1a0215ff7dbc51595945790f90e49641952"
+    "version": "1.1.0",
+    "publishedAt": 1770871237292,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.2.0",
+      "publishedAt": 1770736122035,
+      "commit": "https://github.com/openclaw/skills/commit/8bb0f1a0215ff7dbc51595945790f90e49641952"
+    },
     {
       "version": "2.0.2",
       "publishedAt": 1770733546179,
