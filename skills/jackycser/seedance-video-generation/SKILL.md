@@ -380,6 +380,10 @@ FINAL_RESULT=$(curl -s -X POST "https://ark.cn-beijing.volces.com/api/v3/content
 - Dimensions: 300-6000 px per side
 - Max file size: 30 MB
 
+## 通过飞书发送视频文件（OpenClaw）
+
+详见 [how_to_send_video_via_feishu_app.md](how_to_send_video_via_feishu_app.md)
+
 ## Rules
 
 1. **Always check** that `ARK_API_KEY` is set before making API calls: `[ -z "$ARK_API_KEY" ] && echo "Error: ARK_API_KEY not set" && exit 1`
