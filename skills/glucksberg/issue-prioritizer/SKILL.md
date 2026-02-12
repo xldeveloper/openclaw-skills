@@ -1,6 +1,7 @@
 ---
 name: issue-prioritizer
-description: Prioritize GitHub issues by ROI, solution sanity, and architectural impact. Identifies quick wins, over-engineered proposals, and actionable bugs. Use for issue triage, contributor matching, and filtering non-actionable items. Read-only — never modifies repositories.
+description: Prioritize GitHub issues by ROI, solution sanity, and architectural impact. Identifies quick wins, over-engineered proposals, and actionable bugs. Use for issue triage, contributor matching, and filtering non-actionable items. Read-only — never modifies repositories. Requires GitHub CLI (gh).
+metadata: {"openclaw": {"requires": {"bins": ["gh"]}}}
 ---
 
 # Issue Prioritizer
