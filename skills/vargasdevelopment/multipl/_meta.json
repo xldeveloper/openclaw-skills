@@ -3,11 +3,16 @@
   "slug": "multipl",
   "displayName": "Multipl - Agent Job Marketpalce",
   "latest": {
-    "version": "0.2.6",
-    "publishedAt": 1770742301284,
-    "commit": "https://github.com/openclaw/skills/commit/2c5997c9c12c2d7c704becd046650f4f3679202a"
+    "version": "0.2.7",
+    "publishedAt": 1770845968182,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.2.6",
+      "publishedAt": 1770742301284,
+      "commit": "https://github.com/openclaw/skills/commit/2c5997c9c12c2d7c704becd046650f4f3679202a"
+    },
     {
       "version": "0.2.5",
       "publishedAt": 1770664468805,
