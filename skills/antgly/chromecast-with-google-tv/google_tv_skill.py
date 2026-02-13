@@ -11,15 +11,19 @@ Control Chromecast with Google TV and cast to it via ADB.
 
 Usage:
   ./google_tv_skill.py status [--device IP] [--port PORT]
+  ./google_tv_skill.py pair [--pairing-ip IP] [--pairing-port PORT] [--pairing-code CODE] [--save-to-cache] [--show-instructions]
   ./google_tv_skill.py play <query_or_id_or_url> [--device IP] [--port PORT]
   ./google_tv_skill.py pause [--device IP] [--port PORT]
   ./google_tv_skill.py resume [--device IP] [--port PORT]
-  ./google_tv_skill.py pair --device IP --pair-port PORT [--code CODE]
 
 Notes:
 - Requires uv and adb on PATH; no venv required.
 - Caches last successful IP:PORT to .last_device.json in the skill folder.
 - Does NOT perform port scanning. It will attempt the explicit port passed or cached one.
+- Pairing: Use `pair` command to perform ADB wireless pairing with your Chromecast. This is a prerequisite before connecting.
+  - Use --show-instructions to display detailed setup guide.
+  - After pairing, use the connection port shown on the Wireless debugging screen for other commands.
+  - If connection is refused, the script will offer to retry or pair interactively (when running in a tty).
 - YouTube: prefers resolving to a video ID using the yt-api CLI (calls `yt-api` on PATH). If an ID is obtained, it launches the YouTube app via ADB intent restricted to the YouTube package.
 - Tubi: expects an https URL. The script will attempt a VIEW https intent restricted to the Tubi package.
 
@@ -61,6 +65,68 @@ YOUTUBE_SHORT_HOSTS = {'youtu.be', 'www.youtu.be'}
 
 KEYCODE_MEDIA_PLAY = 126
 KEYCODE_MEDIA_PAUSE = 127
+
+def print_pairing_instructions():
+    """Display instructions for enabling wireless debugging and pairing with Chromecast."""
+    print("""
+=== ADB Wireless Debugging & Pairing Instructions ===
+
+To pair with your Chromecast with Google TV:
+
+1. Enable Developer Options on your Chromecast:
+   - Navigate to Settings > System > About
+   - Scroll down to "Android TV OS build"
+   - Press SELECT on the build number 7 times
+   - You'll see "You are now a developer!" message
+
+2. Enable USB Debugging and Wireless Debugging:
+   - Go back to Settings > System > Developer options
+   - Turn ON "USB debugging"
+   - Turn ON "Wireless debugging"
+
+3. Pair with pairing code:
+   - In Wireless debugging menu, select "Pair device with pairing code"
+   - A dialog will show:
+     * IP address and port (e.g., 192.168.1.100:12345)
+     * 6-digit pairing code
+   - Use these values with the `pair` command:
+     ./run pair --pairing-ip <IP> --pairing-port <PORT> --pairing-code <CODE>
+   - Example:
+     ./run pair --pairing-ip 192.168.1.100 --pairing-port 12345 --pairing-code 123456
+
+4. Get the connection port:
+   - After successful pairing, press BACK on the Chromecast remote
+   - You'll see the Wireless debugging screen with IP address and port
+   - This port is what you'll use for --port in other commands
+   - Example: ./run status --device 192.168.1.100 --port <CONNECTION_PORT>
+
+Note: Pairing only needs to be done once. After pairing, you can connect
+directly using the device IP and connection port shown on the Wireless debugging screen.
+
+If connection is refused, you may need to re-pair or verify that Wireless
+debugging is still enabled on the Chromecast.
+""")
+
+def adb_pair(ip: str, port: int, code: str, timeout: int = ADB_TIMEOUT_SECONDS) -> Tuple[bool, str]:
+    """
+    Pair with a device using ADB wireless pairing.
+    Returns (success, output_message).
+    """
+    addr = f"{ip}:{port}"
+    cmd = ['adb', 'pair', addr, code]
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        out = (p.stdout or '') + (p.stderr or '')
+        # Treat adb's return code as the primary success indicator. The output may contain
+        # phrases like "Successfully paired" or "paired to", but that is not required.
+        success = p.returncode == 0
+        return success, out
+    except FileNotFoundError:
+        return False, 'adb not found on PATH'
+    except subprocess.TimeoutExpired:
+        return False, f'adb pair timed out after {timeout} seconds'
+    except Exception as e:
+        return False, str(e)
 
 def ensure_python3() -> bool:
     if sys.version_info[0] < 3:
@@ -269,22 +335,6 @@ def adb_connect(
                 pass
     return False, last_out
 
-def adb_pair(
-    ip: str,
-    pair_port: int,
-    code: str,
-    timeout: int = ADB_TIMEOUT_SECONDS,
-) -> Tuple[bool, str]:
-    addr = f"{ip}:{pair_port}"
-    adb_code, out = run_adb(['pair', addr, code], None, timeout=timeout)
-    if adb_code == 127:
-        return False, out
-    ok = adb_code == 0 and (
-        'successfully paired' in out.lower()
-        or 'already paired' in out.lower()
-    )
-    return ok, out
-
 def discover_mdns_device() -> Optional[dict]:
     code, out = run_adb(['mdns', 'services'])
     if code != 0:
@@ -308,17 +358,6 @@ def connection_refused(message: str) -> bool:
         or 'cannot connect' in lowered
     )
 
-def connection_needs_pairing(message: str) -> bool:
-    if not message:
-        return False
-    lowered = message.lower()
-    return (
-        'failed to authenticate' in lowered
-        or 'authentication failed' in lowered
-        or 'unauthorized' in lowered
-        or 'please check confirmation dialog on your device' in lowered
-    )
-
 def prompt_for_port(ip: str) -> Optional[int]:
     if not sys.stdin.isatty():
         return None
@@ -336,91 +375,111 @@ def prompt_for_port(ip: str) -> Optional[int]:
                 return port
         print('Invalid port. Enter a number between 1 and 65535.')
 
-def prompt_for_pair_code(ip: str, pair_port: int) -> Optional[str]:
+def prompt_for_pairing(ip: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Prompt user to pair with the device when connection is refused.
+    Returns (device_spec, error_message).
+    """
     if not sys.stdin.isatty():
-        return None
-    prompt = f'Enter pairing code for {ip}:{pair_port} (blank to cancel): '
+        return None, None
+
+    print(f"\nConnection to {ip} refused. This may mean the device needs to be paired.")
+    print("Options:")
+    print("  1. Retry with a different port")
+    print("  2. Pair with the device")
+    print("  3. Show pairing instructions")
+    print("  4. Cancel")
+
     while True:
         try:
-            value = input(prompt).strip()
+            choice = input("Enter choice (1-4): ").strip()
         except EOFError:
-            return None
-        if not value:
-            return None
-        if value.isdigit():
-            return value
-        print('Invalid pairing code. Enter numeric digits only.')
+            return None, None
 
-def prompt_yes_no(message: str) -> bool:
-    if not sys.stdin.isatty():
-        return False
-    try:
-        value = input(message).strip().lower()
-    except EOFError:
-        return False
-    return value in {'y', 'yes'}
+        if choice == '1':
+            # Retry with different port
+            new_port = prompt_for_port(ip)
+            if not new_port:
+                return None, None
+            ok, out = adb_connect(ip, new_port)
+            if ok:
+                save_cache(ip, new_port)
+                return f"{ip}:{new_port}", None
+            return None, f'adb connect failed (new port): {out.strip()}'
 
-def prompt_for_pair_port(ip: str) -> Optional[int]:
-    if not sys.stdin.isatty():
-        return None
-    prompt = f'Enter ADB pairing port for {ip} (blank to cancel): '
-    while True:
-        try:
-            value = input(prompt).strip()
-        except EOFError:
-            return None
-        if not value:
-            return None
-        if value.isdigit():
-            pair_port = int(value)
-            if 0 < pair_port < 65536:
-                return pair_port
-        print('Invalid pairing port. Enter a number between 1 and 65535.')
+        elif choice == '2':
+            # Pair with device
+            print("\nEnter pairing details from Chromecast 'Pair device with pairing code' screen:")
+            try:
+                pairing_ip = input(f"Pairing IP address (default: {ip}): ").strip() or ip
+                pairing_port_str = input("Pairing port: ").strip()
+                if not pairing_port_str:
+                    print("Pairing port is required.")
+                    continue
+                pairing_port = int(pairing_port_str)
+                if not (1 <= pairing_port <= 65535):
+                    print("Pairing port must be between 1 and 65535.")
+                    continue
+                pairing_code = input("6-digit pairing code: ").strip()
+                if not pairing_code:
+                    print("Pairing code is required.")
+                    continue
+            except (ValueError, EOFError):
+                print("Invalid input.")
+                continue
 
-def try_prompt_pair_then_connect(ip: str, port: int, message: str) -> Tuple[Optional[str], Optional[str]]:
-    if not connection_needs_pairing(message):
-        return None, None
-    if not sys.stdin.isatty():
-        return None, (
-            f'device {ip}:{port} appears unpaired. '
-            f'Run: ./run pair --device {ip} --pair-port <PAIR_PORT> --code <PAIRING_CODE>'
-        )
-    if not prompt_yes_no(f'Device {ip}:{port} appears unpaired. Pair now? [y/N]: '):
-        return None, None
-    pair_port = prompt_for_pair_port(ip)
-    if not pair_port:
-        return None, None
-    pair_code = prompt_for_pair_code(ip, pair_port)
-    if not pair_code:
-        return None, None
+            print(f"Pairing with {pairing_ip}:{pairing_port}...")
+            ok, out = adb_pair(pairing_ip, pairing_port, pairing_code)
+            if ok:
+                print("Successfully paired!")
+                print("\nNow enter the connection port from the Wireless debugging screen")
+                print("(press BACK on the Chromecast remote to see it):")
+                try:
+                    connect_port_str = input(f"Connection port: ").strip()
+                    if not connect_port_str:
+                        print("Connection port is required.")
+                        continue
+                    connect_port = int(connect_port_str)
+                    if not (1 <= connect_port <= 65535):
+                        print("Connection port must be between 1 and 65535.")
+                        continue
+                except ValueError:
+                    print("Invalid port value.")
+                    continue
+                except EOFError:
+                    print("Input cancelled.")
+                    continue
 
-    paired, pair_out = adb_pair(ip, pair_port, pair_code)
-    if not paired:
-        return None, f'adb pair failed: {pair_out.strip()}'
+                ok_connect, out_connect = adb_connect(pairing_ip, connect_port)
+                if ok_connect:
+                    save_cache(pairing_ip, connect_port)
+                    return f"{pairing_ip}:{connect_port}", None
+                print(f"Pairing succeeded but connection failed: {out_connect.strip()}")
+                print("You can try a different connection port or select another option.")
+                continue
+            else:
+                print(f"Pairing failed: {out.strip()}")
+                print("Please verify the pairing code and try again.")
+                continue
 
-    ok, out = adb_connect(ip, port)
-    if ok:
-        save_cache(ip, port)
-        return f"{ip}:{port}", None
-    return None, f'adb connect failed after successful pairing: {out.strip()}'
+        elif choice == '3':
+            # Show instructions
+            print_pairing_instructions()
+            continue
+
+        elif choice == '4':
+            # Cancel
+            return None, None
+
+        else:
+            print("Invalid choice. Enter 1, 2, 3, or 4.")
 
 def try_prompt_new_port(ip: str, message: str) -> Tuple[Optional[str], Optional[str]]:
     if not connection_refused(message):
         return None, None
-    new_port = prompt_for_port(ip)
-    if not new_port:
-        return None, None
-    ok, out = adb_connect(ip, new_port)
-    if ok:
-        save_cache(ip, new_port)
-        return f"{ip}:{new_port}", None
-    return None, f'adb connect failed (new port): {out.strip()}'
+    return prompt_for_pairing(ip)
 
-def ensure_connected(
-    ip: Optional[str],
-    port: Optional[int],
-    offer_pairing_prompt: bool = False,
-) -> Tuple[Optional[str], Optional[str]]:
+def ensure_connected(ip: Optional[str], port: Optional[int]) -> Tuple[Optional[str], Optional[str]]:
     # Returns (device_spec, error_message)
     cache = load_cache()
 
@@ -476,12 +535,6 @@ def ensure_connected(
         ok2, out2 = adb_connect(cache['ip'], cache['port'])
         if ok2:
             return f"{cache['ip']}:{cache['port']}", None
-        if offer_pairing_prompt:
-            paired_device, pair_err = try_prompt_pair_then_connect(cache['ip'], cache['port'], out2)
-            if paired_device:
-                return paired_device, None
-            if pair_err:
-                return None, pair_err
 
         # For cached fallback, also try mDNS rediscovery if connection refused
         if connection_refused(out2):
@@ -500,52 +553,9 @@ def ensure_connected(
         if prompt_err:
             return None, prompt_err
 
-        if offer_pairing_prompt:
-            paired_device, pair_err = try_prompt_pair_then_connect(cache['ip'], cache['port'], out2)
-            if paired_device:
-                return paired_device, None
-            if pair_err:
-                return None, pair_err
-
-        if offer_pairing_prompt:
-            paired_device, pair_err = try_prompt_pair_then_connect(ip, port, out)
-            if paired_device:
-                return paired_device, None
-            if pair_err:
-                return None, pair_err
-
         return None, f'adb connect failed (explicit): {out.strip()} ; cached attempt: {out2.strip()}'
 
-    if offer_pairing_prompt:
-        paired_device, pair_err = try_prompt_pair_then_connect(ip, port, out)
-        if paired_device:
-            return paired_device, None
-        if pair_err:
-            return None, pair_err
-
     return None, f'adb connect failed: {out.strip()}'
-
-def pair_cmd(args) -> int:
-    if not args.ip:
-        print('device IP required for pair (pass --device or set CHROMECAST_HOST)')
-        return 1
-    if not args.pair_port or not (0 < args.pair_port < 65536):
-        print('invalid --pair-port; expected 1-65535')
-        return 1
-
-    pair_code = (args.code or '').strip()
-    if not pair_code:
-        pair_code = prompt_for_pair_code(args.ip, args.pair_port) or ''
-    if not pair_code:
-        print('pairing code required (pass --code or run interactively)')
-        return 1
-
-    ok, out = adb_pair(args.ip, args.pair_port, pair_code)
-    if not ok:
-        print('adb pair failed:', out.strip())
-        return 2
-    print(f'paired {args.ip}:{args.pair_port}')
-    return 0
 
 def status_cmd(args) -> int:
     device, err = ensure_connected(args.ip, args.port)
@@ -559,8 +569,69 @@ def status_cmd(args) -> int:
     print(out.strip())
     return 0 if code == 0 else 4
 
+def pair_cmd(args) -> int:
+    """Handle the pair command to pair with a Chromecast device."""
+    if args.show_instructions:
+        print_pairing_instructions()
+        return 0
+
+    if not args.pairing_ip or not args.pairing_port or not args.pairing_code:
+        print("Error: --pairing-ip, --pairing-port, and --pairing-code are required for pairing.")
+        print("\nTo see pairing instructions, run: ./run pair --show-instructions")
+        return 1
+
+    print(f"Pairing with {args.pairing_ip}:{args.pairing_port}...")
+    ok, out = adb_pair(args.pairing_ip, args.pairing_port, args.pairing_code)
+
+    if ok:
+        print("Successfully paired!")
+        print("\nNext steps:")
+        print("1. Press BACK on the Chromecast remote to return to Wireless debugging screen")
+        print("2. Note the IP address and port shown on that screen")
+        print("3. Use these values to connect:")
+        print(f"   ./run status --device {args.pairing_ip} --port <CONNECTION_PORT>")
+
+        # If cache should be updated with pairing IP and a chosen connection port
+        if args.save_to_cache:
+            if sys.stdin.isatty():
+                try:
+                    port_input = input("\nEnter connection port to save: ").strip()
+                except EOFError:
+                    port_input = ""
+
+                if not port_input:
+                    print("Connection port is required; cache was not updated.")
+                    port = None
+                else:
+                    try:
+                        port = int(port_input)
+                        if not (1 <= port <= 65535):
+                            print("Connection port must be between 1 and 65535; cache was not updated.")
+                            port = None
+                    except ValueError:
+                        print("Invalid port value entered; cache was not updated.")
+                        port = None
+
+                if port is not None:
+                    save_cache(args.pairing_ip, port)
+                    print(f"\nSaved {args.pairing_ip}:{port} to cache.")
+            else:
+                print(
+                    "\nNon-interactive session detected; skipping cache update. "
+                    "Use --device and --port explicitly on future commands."
+                )
+        return 0
+    else:
+        print(f"Pairing failed: {out.strip()}")
+        print("\nTroubleshooting:")
+        print("- Verify the pairing code is correct (6 digits)")
+        print("- Make sure you're using the pairing port, not the connection port")
+        print("- Ensure Wireless debugging is enabled on the Chromecast")
+        print("\nFor detailed instructions, run: ./run pair --show-instructions")
+        return 2
+
 def pause_cmd(args) -> int:
-    device, err = ensure_connected(args.ip, args.port, offer_pairing_prompt=True)
+    device, err = ensure_connected(args.ip, args.port)
     if not device:
         print(err)
         return 2
@@ -573,7 +644,7 @@ def pause_cmd(args) -> int:
     return 0
 
 def resume_cmd(args) -> int:
-    device, err = ensure_connected(args.ip, args.port, offer_pairing_prompt=True)
+    device, err = ensure_connected(args.ip, args.port)
     if not device:
         print(err)
         return 2
@@ -649,7 +720,7 @@ def handle_tubi(device: str, term: str) -> Tuple[bool, str]:
 
 
 def play_cmd(args) -> int:
-    device, err = ensure_connected(args.ip, args.port, offer_pairing_prompt=True)
+    device, err = ensure_connected(args.ip, args.port)
     if not device:
         print(err)
         return 2
@@ -726,6 +797,14 @@ def build_parser():
     sp_status.add_argument('--port', type=int, dest='port', help='ADB port')
     sp_status.set_defaults(func=status_cmd)
 
+    sp_pair = sub.add_parser('pair', help='Pair with Chromecast using wireless debugging')
+    sp_pair.add_argument('--pairing-ip', dest='pairing_ip', help='IP address from pairing screen')
+    sp_pair.add_argument('--pairing-port', type=int, dest='pairing_port', help='Port from pairing screen')
+    sp_pair.add_argument('--pairing-code', dest='pairing_code', help='6-digit pairing code')
+    sp_pair.add_argument('--save-to-cache', action='store_true', help='Save paired device to cache')
+    sp_pair.add_argument('--show-instructions', action='store_true', help='Display pairing instructions')
+    sp_pair.set_defaults(func=pair_cmd)
+
     sp_play = sub.add_parser('play')
     sp_play.add_argument('query', help='Query, YouTube id, or provider-specific id/url')
     sp_play.add_argument('--device', dest='ip', help='Chromecast IP address')
@@ -744,12 +823,6 @@ def build_parser():
     sp_resume.add_argument('--device', dest='ip', help='Chromecast IP address')
     sp_resume.add_argument('--port', type=int, dest='port', help='ADB port')
     sp_resume.set_defaults(func=resume_cmd)
-
-    sp_pair = sub.add_parser('pair')
-    sp_pair.add_argument('--device', dest='ip', help='Chromecast IP address')
-    sp_pair.add_argument('--pair-port', type=int, dest='pair_port', required=True, help='ADB pairing port')
-    sp_pair.add_argument('--code', dest='code', help='ADB pairing code')
-    sp_pair.set_defaults(func=pair_cmd)
 
     return p
 

@@ -5,35 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog (https://keepachangelog.com/en/1.1.0/)
 and this project adheres to Semantic Versioning (https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] - 2026-02-08
+## [1.2.0] - 2026-02-12
 
 ### Added
 
-- Added `pair` command to run `adb pair` with explicit `--device` and `--pair-port` arguments.
-- Added optional `--code` support with interactive prompt fallback for pairing code entry.
-- Added unit tests for pairing helpers and `pair` command flow.
+- `pair` command for ADB wireless pairing with Chromecast devices.
+- `--show-instructions` flag for `pair` command to display detailed pairing setup guide.
+- Interactive pairing flow when connection is refused with options to retry, pair, or view instructions.
+- `adb_pair()` function to handle ADB wireless pairing.
+- `print_pairing_instructions()` function to display step-by-step pairing guide.
+- `prompt_for_pairing()` function to interactively guide users through pairing or port retry.
+- Unit tests for ADB pairing functionality.
 
 ### Changed
 
-- Documented that pairing uses a dedicated pairing port and does not auto-connect or update cache.
-- `play`, `pause`, and `resume` now offer interactive pairing when ADB connect fails due to authentication/unpaired state.
-- Adjusted pairing prompt timing to run after normal reconnect fallbacks, avoiding pair prompts for generic connectivity/IP/port drift issues.
-
-## [1.0.3] - 2026-02-08
-
-### Documentation
-
-- Added an explicit execution policy to `SKILL.md` requiring command execution for pause/resume/status/play intents.
-- Documented that responses must not claim success unless command exit code is 0.
-- Documented failure handling requirements to return real command errors and next corrective steps.
-
-## [1.0.2] - 2026-02-08
-
-### Documentation
-
-- Tuned `SKILL.md` trigger metadata for reliability by requiring only `adb` and `uv` at selection time.
-- Added explicit Chromecast/Google TV intent-to-command mappings in `SKILL.md` to improve skill routing.
-- Clarified conditional runtime dependencies: `yt-api` is only needed for YouTube query resolution and `scrcpy` only for global-search fallback.
+- Updated `ensure_connected()` to offer pairing option when connection is refused in interactive mode.
+- Enhanced `try_prompt_new_port()` to use new interactive pairing flow.
+- Updated documentation in README.md and SKILL.md to include pairing prerequisites and instructions.
+- Updated module docstring to document new pairing command.
 
 ## [1.0.1] - 2026-02-08
 
