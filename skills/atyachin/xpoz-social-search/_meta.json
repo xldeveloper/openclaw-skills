@@ -1,11 +1,17 @@
 {
   "owner": "atyachin",
   "slug": "xpoz-social-search",
-  "displayName": "Social Media Search — Twitter, Instagram & Reddit",
+  "displayName": "Xpoz Social Search",
   "latest": {
-    "version": "1.3.0",
-    "publishedAt": 1770848743384,
-    "commit": "https://github.com/openclaw/skills/commit/0405ad1e4b01add1e4ce5161a3ee6112b539f0d5"
+    "version": "1.5.0",
+    "publishedAt": 1770890945970,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.3.0",
+      "publishedAt": 1770848743384,
+      "commit": "https://github.com/openclaw/skills/commit/0405ad1e4b01add1e4ce5161a3ee6112b539f0d5"
+    }
+  ]
 }
