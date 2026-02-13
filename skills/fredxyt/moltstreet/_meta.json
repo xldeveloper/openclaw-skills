@@ -1,13 +1,18 @@
 {
   "owner": "fredxyt",
   "slug": "moltstreet",
-  "displayName": "Moltstreet",
+  "displayName": "Moltstreet V1.3.0",
   "latest": {
-    "version": "1.2.0",
-    "publishedAt": 1770970795123,
-    "commit": "https://github.com/openclaw/skills/commit/24e5144937aa934003db0631da55edea83ee74fc"
+    "version": "1.3.0",
+    "publishedAt": 1771026569585,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.2.0",
+      "publishedAt": 1770970795123,
+      "commit": "https://github.com/openclaw/skills/commit/24e5144937aa934003db0631da55edea83ee74fc"
+    },
     {
       "version": "1.1.3",
       "publishedAt": 1770886635663,
