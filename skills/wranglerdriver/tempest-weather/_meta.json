@@ -1,0 +1,11 @@
+{
+  "owner": "wranglerdriver",
+  "slug": "tempest-weather",
+  "displayName": "Tempest Weather",
+  "latest": {
+    "version": "1.0.6",
+    "publishedAt": 1770940326468,
+    "commit": null
+  },
+  "history": []
+}
