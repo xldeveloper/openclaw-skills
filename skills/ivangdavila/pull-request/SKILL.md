@@ -1,95 +1,81 @@
 ---
 name: Pull Request
-description: Create quality PRs that get merged with pre-flight checks, scope detection, rate limits, and maintainer-friendly communication.
+slug: pull-request
+version: 1.0.1
+description: Create high-quality pull requests with pre-submission validation, maintainer-friendly formatting, and automated quality checks.
 ---
 
-## First: Read the Repo
+## When to Use
 
-Before ANY PR, check:
+Before creating or suggesting a pull request to ANY repository. Acts as a quality filter to prevent wasting maintainer time and embarrassing the contributor.
 
-- **CONTRIBUTING.md** — Issue required? CLA/DCO? Discussion first?
-- **Recent merged PRs** — What does success look like?
-- **AI policy** — Search for "AI", "bot", "automated" in docs
-- **Project state** — Active? In freeze? Accepting contributions?
+## Quick Reference
 
-Adapt to THEIR workflow.
+| Domain | File |
+|--------|------|
+| Pre-submission checklist | `checklist.md` |
+| Red flags to avoid | `red-flags.md` |
+| Repository context gathering | `repo-context.md` |
+| PR description templates | `templates.md` |
 
-## Scope Boundaries — STOP If:
+## Critical Rules
 
-```
-□ Change touches >5 files OR >200 lines
-□ Change modifies public API
-□ Change involves security, auth, crypto
-□ Change is in governance, licensing, CoC
-□ Issue has "needs discussion" or RFC label
-```
+- **Read CONTRIBUTING.md first** — Adapt to project's workflow, not a fixed pattern
+- **Issue policy depends on scope** — Small fixes may PR directly; features need discussion first
+- **Disclose AI involvement** — Mark AI-assisted PRs in title/description
+- **Run checks if possible** — If you can't run tests, say so explicitly
+- **Match existing style** — Check for `.editorconfig`, `prettier`, `eslint` configs
+- **Small and focused** — One logical change per PR
+- **No secrets ever** — Use `<PLACEHOLDER>` syntax
 
-→ **Escalate to human before proceeding.**
+## Issue Policy (Contextual)
 
-## Rate Limits
+**NOT all projects require issues first.** Check CONTRIBUTING.md, then:
 
-- Max 1 open PR per repo at a time
+| Change Type | Default Action |
+|-------------|----------------|
+| Typo, small bug fix | PR directly (unless CONTRIBUTING.md says otherwise) |
+| New feature | Open Discussion/Issue first, wait for approval |
+| Architecture change | RFC or Discussion required |
+| When in doubt | Ask in issue before coding |
+
+## AI-Assisted PRs
+
+If this PR was created with AI assistance:
+
+1. **Mark it** — Add `[AI-assisted]` to PR title or note in description
+2. **Testing level** — State: `untested` / `lightly tested` / `fully tested`
+3. **Include context** — Prompts or session logs if available and helpful
+4. **Confirm understanding** — "I have reviewed this code and understand what it does"
+5. **Human accountable** — Link to the human directing the contribution
+
+## Rate Limiting (Avoid Spam)
+
+- MAX 1 open PR per repo at a time
 - Wait 24h between PRs to same repo
-- If 2 PRs rejected consecutively → STOP, escalate to human
+- If 2 PRs rejected consecutively → STOP and escalate to human
+- Check repo's PR velocity first (don't flood low-activity projects)
 
-## Pre-PR Checklist
+## Abandonment Prevention
 
-```
-□ Repo accepts contributions (check notices)
-□ Correct target branch
-□ Tests pass locally (or disclose "could not run")
-□ Linter passes with repo's config
-□ No unrelated changes
-□ Commits match project format
-□ Branch rebased, no conflicts
-```
+- MUST respond to review feedback within 48h
+- If unable to address feedback, close with: "I cannot continue; @human please take over or close"
+- Never leave PRs to rot
 
-## AI Disclosure
+## Scope Boundaries — STOP and Discuss First If:
 
-```markdown
-## 🤖 AI-Assisted PR
-- **Agent:** [Name/tool]
-- **Testing:** [Full suite / Manual / Could not run locally]
-- **Human review:** [Yes / No]
-- **Prompts:** [Link or summary if available]
-```
+- Change touches >5 files OR >200 lines
+- Change modifies public API
+- Change involves security, auth, or crypto
+- Change is in governance, licensing, or CoC
+- Maintainer requested discussion in issue
+- You're unsure if this aligns with project philosophy
 
-## PR Description Format
+## Human Escalation Required
 
-```markdown
-## Summary
-What and why.
-
-## Changes
-- Actual changes (not "updated files")
-
-## Testing
-How verified.
-
-## Related
-Fixes #123 (if applicable)
-```
-
-## After Opening
-
-- Respond to review feedback within 48h
-- If unable to continue: "I cannot address this; @human please take over"
-- Never abandon a PR silently
-
-## Red Flags to Avoid
-
-- Scope creep (typo fix → refactor)
-- Generic commits ("Fix bug")
-- Patterns not in codebase
-- No uncertainty on complex changes
-
-## Hard Rules
-
-- One logical change per PR
-- Never modify CI/CD without explicit request
-- Never include secrets (use `<PLACEHOLDER>`)
-- Max ~400 lines (ideally <200)
-
-## Security
-
-For security-sensitive repos, see `security.md`.
+Escalate to human when:
+- Reviewer asks clarifying questions about design intent
+- CI fails in non-obvious way
+- Any pushback beyond "fix this typo"
+- Reviewer seems confused or frustrated
+- You can't run the test suite locally
