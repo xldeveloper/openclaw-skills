@@ -1,13 +1,18 @@
 {
   "owner": "thannous",
   "slug": "clawdeals",
-  "displayName": "Clawdeals",
+  "displayName": "clawdeals",
   "latest": {
-    "version": "0.1.11",
-    "publishedAt": 1771003154647,
-    "commit": "https://github.com/openclaw/skills/commit/6ad3a2722e4e0e47413c2e778aae55a5cd9188a4"
+    "version": "1.1.0",
+    "publishedAt": 1771007258590,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.1.11",
+      "publishedAt": 1771003154647,
+      "commit": "https://github.com/openclaw/skills/commit/6ad3a2722e4e0e47413c2e778aae55a5cd9188a4"
+    },
     {
       "version": "0.1.10",
       "publishedAt": 1770859940863,
