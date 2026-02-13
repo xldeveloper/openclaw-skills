@@ -1,8 +1,8 @@
 ---
 name: NEON-SOUL
-version: 0.1.8
+version: 0.1.10
 description: AI Identity Through Grounded Principles - synthesize your soul from memory with semantic compression.
-homepage: https://liveneon.ai
+homepage: https://github.com/geeks-accelerator/neon-soul
 user-invocable: true
 disableModelInvocation: true
 disable-model-invocation: true
@@ -42,9 +42,76 @@ NEON-SOUL is an **instruction-based skill** - there is no binary or CLI to insta
 2. Your agent reads this SKILL.md and follows the instructions
 3. The agent uses its built-in capabilities to read files, analyze content, and write output
 
-**No external code execution** - the skill is pure instructions that your agent interprets.
+**No external API calls** - your data never leaves your local machine. The skill does not transmit data to external servers, third-party endpoints, or remote APIs.
 
-**Data handling**: Your data stays with your agent. All analysis uses the same model you've already configured and trust - no external APIs, no third-party endpoints. The skill is pure instructions with no network code.
+**Local code execution required**: The skill requires `@xenova/transformers` (an npm package) running locally for embedding inference. This is third-party code that runs on YOUR machine, not a remote service. See [Requirements](#requirements) for details.
+
+**Data handling**: Your data stays local. All analysis happens on your machine using locally-installed packages - no data transmission, no external APIs, no third-party endpoints receiving your content.
+
+---
+
+## Requirements
+
+### Embedding Model (Required)
+
+NEON-SOUL requires **`Xenova/all-MiniLM-L6-v2`** for local embedding inference.
+
+| Requirement | Details |
+|-------------|---------|
+| Model | `Xenova/all-MiniLM-L6-v2` (384-dimensional vectors) |
+| Provider | `@xenova/transformers` (local inference) |
+| Node.js | >= 22.0.0 |
+| Disk space | ~100MB (model cache in `node_modules/.cache`) |
+| Network | One-time download only (~23MB) |
+
+**No external API fallback**: If the model cannot be loaded, the skill fails immediately with a clear error message. NEON-SOUL will NOT fall back to external embedding APIs (OpenAI, Cohere, etc.).
+
+**Why this matters**: The "no external APIs" guarantee depends on local embedding inference. If external APIs were used as fallback, your data could be transmitted to third-party services without your knowledge.
+
+### Model Source & Integrity
+
+The embedding model is downloaded from Hugging Face on first use:
+
+| Property | Value |
+|----------|-------|
+| Model URL | https://huggingface.co/Xenova/all-MiniLM-L6-v2 |
+| Model files | `onnx/model_quantized.onnx` (~23MB) |
+| Original model | [sentence-transformers/all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) |
+| Conversion | ONNX quantized by [@xenova](https://huggingface.co/Xenova) |
+| Cache location | `node_modules/.cache/@xenova/transformers/` |
+
+**Integrity verification** (optional but recommended):
+```bash
+# After first run, verify the model file exists
+ls -la node_modules/.cache/@xenova/transformers/Xenova/all-MiniLM-L6-v2/onnx/
+
+# Check file size (should be ~23MB for quantized model)
+du -sh node_modules/.cache/@xenova/transformers/Xenova/all-MiniLM-L6-v2/
+```
+
+**Trust model**: The model is a quantized ONNX conversion of a well-known sentence-transformers model. The @xenova/transformers library (>1M weekly npm downloads) handles download and caching. If you require higher assurance, you can:
+1. Pre-download the model from Hugging Face
+2. Verify against Hugging Face's published checksums
+3. Place in the cache directory manually
+
+### Local vs External: What This Means
+
+| Type | NEON-SOUL | Your data |
+|------|-----------|-----------|
+| **External API calls** | ❌ Never | Never transmitted |
+| **Local code execution** | ✅ Required | Processed locally |
+| **Network access** | One-time model download | Model weights only, not your data |
+
+**Clarification**: "No external APIs" means your memory files, SOUL.md, and personal data are NEVER sent over the network. The only network activity is the initial model download (~23MB) from Hugging Face, which downloads model weights, not your data.
+
+**Verification**:
+```bash
+# Check @xenova/transformers is installed
+npm ls @xenova/transformers
+
+# Check Node.js version
+node --version  # Should be >= 22.0.0
+```
 
 ---
 
@@ -411,3 +478,40 @@ Dimension classification uses semantic analysis. If results seem wrong:
 - Check the axiom's source signals (`/neon-soul audit <axiom-id>`)
 - The LLM classifier uses the axiom's native text, which may have different semantic weight than you expect
 - Unknown dimensions default to `vibe` (logged with `NEON_SOUL_DEBUG=1`)
+
+### Embedding model failed to load
+
+If you see `EmbeddingModelError: Failed to load embedding model`, the skill cannot proceed.
+
+**What this means:**
+- The `Xenova/all-MiniLM-L6-v2` model is required for similarity matching
+- NEON-SOUL does NOT fall back to external embedding APIs
+- Without local embeddings, the skill fails fast rather than risk sending data externally
+
+**Common causes:**
+- **Missing dependency**: `@xenova/transformers` not installed
+- **Node.js version**: Requires Node.js >= 22.0.0
+- **First run**: Initial model download (~23MB) requires network access
+- **Disk space**: Model cache needs ~100MB in `node_modules/.cache`
+- **Network firewall**: May block Hugging Face model download
+
+**How to fix:**
+```bash
+# 1. Check @xenova/transformers is installed
+npm ls @xenova/transformers
+
+# 2. Check Node.js version
+node --version  # Must be >= 22.0.0
+
+# 3. If missing, install dependencies
+npm install
+
+# 4. Test embedding directly (will download model if needed)
+npx tsx -e "import { embed } from './src/lib/embeddings.js'; embed('test').then(console.log)"
+```
+
+**If behind a firewall:**
+The model is downloaded from Hugging Face on first use. If blocked:
+1. Download model manually from https://huggingface.co/Xenova/all-MiniLM-L6-v2
+2. Place in `node_modules/.cache/@xenova/transformers/`
+3. Or configure corporate proxy: `HTTPS_PROXY=http://proxy:port npm run ...`
