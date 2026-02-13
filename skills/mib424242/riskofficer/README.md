@@ -102,4 +102,6 @@ MIT
 
 ---
 
-**Synced from riskofficer backend v1.14.0**
+**Security:** This skill contains only Markdown and documented API examples (curl). No executables or scripts — compatible with ClawHub/VirusTotal scanning.
+
+**Synced from riskofficer backend v1.15.0** — Risk history, portfolio history, snapshot diff, VaR force_recalc.
