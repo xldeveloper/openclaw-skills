@@ -45,6 +45,15 @@ python3 scripts/aip.py messages                    # retrieve + auto-decrypt inb
 python3 scripts/aip.py messages --unread           # unread only
 python3 scripts/aip.py messages --mark-read        # mark retrieved messages as read
 
+# Reply to a message
+python3 scripts/aip.py reply <message_id> "Thanks for reaching out!"
+
+# Trust management
+python3 scripts/aip.py trust-score <source_did> <target_did>
+python3 scripts/aip.py trust-graph                 # ASCII visualization
+python3 scripts/aip.py trust-graph --format json
+python3 scripts/aip.py revoke <vouch_id>
+
 # Discovery
 python3 scripts/aip.py list                        # list all registered agents
 python3 scripts/aip.py list --limit 10             # paginated

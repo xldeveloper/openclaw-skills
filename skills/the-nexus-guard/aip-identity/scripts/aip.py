@@ -449,6 +449,130 @@ def cmd_whoami(args):
         print(f"     → {v.get('target_did', '?')} [{cat}]")
 
 
+def cmd_reply(args):
+    """Reply to a received message by ID."""
+    creds = load_creds(args.credentials)
+    # Get messages to find sender
+    challenge_data = api("POST", "/challenge", {"did": creds["did"]})
+    if not challenge_data:
+        sys.exit(1)
+    challenge = challenge_data["challenge"]
+    sig = sign_message(challenge.encode(), creds["private_key"])
+    msgs_data = api("POST", "/messages", {
+        "did": creds["did"], "challenge": challenge, "signature": sig, "unread_only": False
+    })
+    if not msgs_data:
+        sys.exit(1)
+    original = None
+    for m in msgs_data.get("messages", []):
+        if m.get("id") == args.message_id:
+            original = m
+            break
+    if not original:
+        print(f"❌ Message {args.message_id} not found.")
+        sys.exit(1)
+    recipient_did = original.get("sender_did")
+    content = f"[Re: {args.message_id[:8]}] {args.content}"
+    send_sig = sign_message(f"{creds['did']}|{recipient_did}|{content}".encode(), creds["private_key"])
+    result = api("POST", "/messages/send", {
+        "sender_did": creds["did"], "recipient_did": recipient_did,
+        "content": content, "signature": send_sig,
+    })
+    if result:
+        print(f"✅ Reply sent to {recipient_did}")
+
+
+def cmd_list(args):
+    """List registered agents."""
+    url = f"/admin/registrations?limit={args.limit}&offset={args.offset}"
+    data = api("GET", url)
+    if not data:
+        sys.exit(1)
+    regs = data.get("registrations", [])
+    if not regs:
+        print("No registrations found.")
+        return
+    print(f"{'DID':<45} {'Platform':<12} {'Username':<25} {'Created'}")
+    print("-" * 100)
+    for r in regs:
+        platforms = r.get("platforms", [])
+        if platforms:
+            for p in platforms:
+                print(f"{r['did']:<45} {p.get('platform','?'):<12} {p.get('username','?'):<25} {r.get('created_at','?')}")
+        else:
+            print(f"{r['did']:<45} {'—':<12} {'—':<25} {r.get('created_at','?')}")
+    print(f"\nShowing {data.get('count', '?')} of {data.get('total', '?')}")
+
+
+def cmd_revoke(args):
+    """Revoke a vouch."""
+    creds = load_creds(args.credentials)
+    challenge_data = api("POST", "/challenge", {"did": creds["did"]})
+    if not challenge_data:
+        sys.exit(1)
+    challenge = challenge_data["challenge"]
+    sig = sign_message(challenge.encode(), creds["private_key"])
+    result = api("POST", "/revoke", {
+        "voucher_did": creds["did"], "vouch_id": args.vouch_id,
+        "challenge": challenge, "signature": sig,
+    })
+    if result:
+        print(f"✅ Vouch revoked: {args.vouch_id}")
+
+
+def cmd_trust_score(args):
+    """Show trust score between two agents."""
+    params = f"?source_did={args.source}&target_did={args.target}"
+    if args.scope:
+        params += f"&scope={args.scope}"
+    data = api("GET", f"/trust-path{params}")
+    if not data:
+        sys.exit(1)
+    if not data.get("path_exists"):
+        print(f"❌ No trust path: {args.source[:20]}… → {args.target[:20]}…")
+        print(f"   Score: 0.0")
+        return
+    score = data.get("trust_score", 0.0)
+    bar_len = 20
+    filled = int(score * bar_len)
+    bar = "█" * filled + "░" * (bar_len - filled)
+    print(f"🔗 Trust Score: {score:.4f} [{bar}]")
+    print(f"   Hops: {data.get('path_length', '?')}")
+    for did in data.get("path", []):
+        print(f"   → {did}")
+
+
+def cmd_trust_graph(args):
+    """Visualize trust network."""
+    data = api("GET", "/admin/registrations?limit=100")
+    if not data:
+        sys.exit(1)
+    regs = data.get("registrations", [])
+    # Fetch vouches for each agent
+    graph = {}
+    for r in regs:
+        did = r["did"]
+        platforms = r.get("platforms", [])
+        label = platforms[0]["username"] if platforms else did[:16]
+        vouches_data = api("GET", f"/vouches/{did}")
+        received = vouches_data.get("vouches_received", []) if vouches_data else []
+        graph[did] = {"label": label, "vouched_by": [v["voucher_did"] for v in received]}
+    if args.format == "json":
+        print(json.dumps(graph, indent=2))
+        return
+    # ASCII
+    print("=== AIP Trust Network ===\n")
+    for did, info in graph.items():
+        vouchers = info["vouched_by"]
+        if vouchers:
+            for v in vouchers:
+                v_label = graph.get(v, {}).get("label", v[:16])
+                print(f"  {v_label} → {info['label']}")
+        else:
+            print(f"  {info['label']} (no vouches)")
+    print(f"\n{len(graph)} agents")
+
+
 # --- CLI ---
 
 def main():
@@ -500,6 +624,27 @@ def main():
     p_who = sub.add_parser("whoami", help="Show your identity")
     p_who.add_argument("--credentials", default=DEFAULT_CREDS)
 
+    p_reply = sub.add_parser("reply", help="Reply to a received message")
+    p_reply.add_argument("message_id", help="ID of the message to reply to")
+    p_reply.add_argument("content", help="Reply text")
+    p_reply.add_argument("--credentials", default=DEFAULT_CREDS)
+
+    p_list = sub.add_parser("list", help="List registered agents")
+    p_list.add_argument("--limit", type=int, default=50)
+    p_list.add_argument("--offset", type=int, default=0)
+
+    p_revoke = sub.add_parser("revoke", help="Revoke a vouch")
+    p_revoke.add_argument("vouch_id", help="ID of the vouch to revoke")
+    p_revoke.add_argument("--credentials", default=DEFAULT_CREDS)
+
+    p_tscore = sub.add_parser("trust-score", help="Trust score between two agents")
+    p_tscore.add_argument("source", help="Source DID")
+    p_tscore.add_argument("target", help="Target DID")
+    p_tscore.add_argument("--scope", default=None)
+
+    p_tgraph = sub.add_parser("trust-graph", help="Visualize trust network")
+    p_tgraph.add_argument("--format", choices=["ascii", "json"], default="ascii")
+
     args = parser.parse_args()
     if not args.command:
         parser.print_help()
@@ -509,6 +654,8 @@ def main():
         "register": cmd_register, "verify": cmd_verify, "vouch": cmd_vouch,
         "sign": cmd_sign, "whoami": cmd_whoami, "message": cmd_message,
         "messages": cmd_messages, "rotate-key": cmd_rotate_key, "badge": cmd_badge,
+        "reply": cmd_reply, "list": cmd_list, "revoke": cmd_revoke,
+        "trust-score": cmd_trust_score, "trust-graph": cmd_trust_graph,
     }
     cmds[args.command](args)
 
