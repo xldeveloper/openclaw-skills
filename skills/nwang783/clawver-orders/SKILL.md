@@ -1,7 +1,7 @@
 ---
 name: clawver-orders
 description: Manage Clawver orders. List orders, track status, process refunds, generate download links. Use when asked about customer orders, fulfillment, refunds, or order history.
-version: 1.1.0
+version: 1.3.0
 homepage: https://clawver.store
 metadata: {"openclaw":{"emoji":"📦","homepage":"https://clawver.store","requires":{"env":["CLAW_API_KEY"]},"primaryEnv":"CLAW_API_KEY"}}
 ---
@@ -15,6 +15,8 @@ Manage orders on your Clawver store—view order history, track fulfillment, pro
 - `CLAW_API_KEY` environment variable
 - Active store with orders
 
+For platform-specific good and bad API patterns from `claw-social`, use `references/api-examples.md`.
+
 ## List Orders
 
 ### Get All Orders
@@ -27,8 +29,8 @@ curl https://api.clawver.store/v1/orders \
 ### Filter by Status
 
 ```bash
-# Paid orders
-curl "https://api.clawver.store/v1/orders?status=paid" \
+# Confirmed (paid) orders
+curl "https://api.clawver.store/v1/orders?status=confirmed" \
   -H "Authorization: Bearer $CLAW_API_KEY"
 
 # In-progress POD orders
@@ -49,19 +51,22 @@ curl "https://api.clawver.store/v1/orders?status=delivered" \
 | Status | Description |
 |--------|-------------|
 | `pending` | Order created, payment pending |
-| `paid` | Payment confirmed |
+| `confirmed` | Payment confirmed |
 | `processing` | Being fulfilled |
 | `shipped` | In transit (POD only) |
 | `delivered` | Completed |
 | `cancelled` | Cancelled |
-| `refunded` | Fully refunded |
+
+`paymentStatus` is reported separately and can be `pending`, `paid`, `failed`, `partially_refunded`, or `refunded`.
 
 ### Pagination
 
 ```bash
-curl "https://api.clawver.store/v1/orders?limit=20&cursor=abc123" \
+curl "https://api.clawver.store/v1/orders?limit=20" \
   -H "Authorization: Bearer $CLAW_API_KEY"
 ```
+
+`limit` is supported. Cursor-based pagination is not currently exposed on this endpoint.
 
 ## Get Order Details
 
@@ -69,6 +74,12 @@ curl "https://api.clawver.store/v1/orders?limit=20&cursor=abc123" \
 curl https://api.clawver.store/v1/orders/{orderId} \
   -H "Authorization: Bearer $CLAW_API_KEY"
 ```
+
+For print-on-demand items, order payloads include:
+- `variantId` (required — fulfillment variant identifier, must match a product variant)
+- `variantName` (human-readable selected size/variant label)
+
+Note: `variantId` is required for all POD checkout items as of Feb 2026. Out-of-stock variants are rejected.
 
 ## Generate Download Links
 
@@ -132,7 +143,7 @@ curl -X POST https://api.clawver.store/v1/orders/{orderId}/refund \
 - `reason` is required
 - `amountInCents` cannot exceed remaining refundable amount
 - Refunds process through Stripe (1-5 business days to customer)
-- Order must have `status` of `paid` or `processing`
+- Order must have `paymentStatus` of `paid` or `partially_refunded`
 
 ## POD Order Tracking
 
@@ -199,8 +210,8 @@ function verifyWebhook(body, signature, secret) {
 ### Daily Order Check
 
 ```python
-# Get paid orders
-response = api.get("/v1/orders?status=paid")
+# Get newly paid/confirmed orders
+response = api.get("/v1/orders?status=confirmed")
 orders = response["data"]["orders"]
 print(f"New orders: {len(orders)}")
 
@@ -217,7 +228,7 @@ def process_refund(order_id, amount_cents, reason):
     order = response["data"]["order"]
     
     # Check if refundable
-    if order["status"] not in ["paid", "processing"]:
+    if order["paymentStatus"] not in ["paid", "partially_refunded"]:
         return "Order cannot be refunded"
     
     # Process refund
@@ -227,6 +238,21 @@ def process_refund(order_id, amount_cents, reason):
     })
     
     return f"Refunded ${amount_cents/100:.2f}"
+```
+
+### Wrong Size Support Playbook
+
+```python
+def handle_wrong_size(order_id):
+    response = api.get(f"/v1/orders/{order_id}")
+    order = response["data"]["order"]
+
+    for item in order["items"]:
+        if item.get("productType") == "print_on_demand":
+            print("Variant ID:", item.get("variantId"))
+            print("Variant Name:", item.get("variantName"))
+
+    # Confirm selected variant before issuing a refund/replacement workflow.
 ```
 
 ### Resend Download Link
@@ -242,10 +268,10 @@ def resend_download(order_id, item_id):
 ## Order Lifecycle
 
 ```
-pending → paid → processing → shipped → delivered
-            ↓
-        cancelled / refunded
+pending → confirmed → processing → shipped → delivered
+               ↓
+      cancelled / refunded (paymentStatus)
 ```
 
-**Digital products:** `paid` → `delivered` (instant fulfillment)
-**POD products:** `paid` → `processing` → `shipped` → `delivered`
+**Digital products:** `confirmed` → `delivered` (instant fulfillment)
+**POD products:** `confirmed` → `processing` → `shipped` → `delivered`

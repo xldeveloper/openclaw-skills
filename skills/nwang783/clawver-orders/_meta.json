@@ -3,11 +3,16 @@
   "slug": "clawver-orders",
   "displayName": "Clawver Orders",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1770736347347,
-    "commit": "https://github.com/openclaw/skills/commit/d6965d66e29d56f6e2c70b91656ffaf0726b31ad"
+    "version": "1.0.3",
+    "publishedAt": 1770950757264,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1770736347347,
+      "commit": "https://github.com/openclaw/skills/commit/d6965d66e29d56f6e2c70b91656ffaf0726b31ad"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1770343523256,
