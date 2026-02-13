@@ -1,0 +1,11 @@
+{
+  "owner": "byungkyu",
+  "slug": "mailgun-api",
+  "displayName": "Mailgun",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770895627309,
+    "commit": null
+  },
+  "history": []
+}
