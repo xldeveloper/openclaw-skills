@@ -1,65 +1,114 @@
-text
 # iCloud Calendar Sync Skill
 
 Synchronizes calendar events between local system and iCloud.
 
 ## ⚠️ Security Requirements
 
-**MUST READ before installation:**
+**CRITICAL - Read before installation:**
 
-1. **Never pass password via CLI**:
-   ```bash
-   # ❌ DANGEROUS
-   ./icalendar-sync --username user@icloud.com --password "MyPassword"
-   
-   # ✅ SECURE - use keyring
-   ./icalendar-sync --username user@icloud.com
-Do NOT use .env file in production:
+### 1. Use App-Specific Password ONLY
 
-~/.openclaw/.env stores password in plaintext
+- Generate at https://appleid.apple.com/account/security
+- **NEVER use your main Apple ID password**
+- Can be revoked anytime if compromised
 
-Use only for development
+### 2. Use OS Keyring for Credential Storage
 
-On production use OS keyring
+The skill stores credentials securely in your operating system's keyring:
+- **macOS**: Keychain
+- **Windows**: Credential Manager
+- **Linux**: Secret Service API
 
-For Docker - use secrets:
+### 3. For Headless/Automated Environments
 
-bash
-# ❌ DANGEROUS
-docker run -e ICLOUD_PASSWORD="secret" ...
+For Docker, CI/CD, or headless servers where interactive input is not possible:
 
-# ✅ SECURE
-docker run --secret icloud_password ...
-Use app-specific password:
+**Option A: Environment Variables** (standard, secure method)
+```bash
+# Set credentials as environment variables
+export ICLOUD_USERNAME="user@icloud.com"
+export ICLOUD_APP_PASSWORD="xxxx-xxxx-xxxx-xxxx"
 
-Generate at https://appleid.apple.com/account/security
+# Run setup
+python -m icalendar_sync setup --non-interactive
+```
 
-DO NOT use main Apple ID password
+**Option B: Docker/Kubernetes Secrets** (most secure for containers)
+```bash
+# Docker secrets
+docker run --secret icloud_username --secret icloud_password ...
 
-Can be revoked anytime
+# Kubernetes secrets
+kubectl create secret generic icloud-credentials \
+  --from-literal=username=user@icloud.com \
+  --from-literal=password=xxxx-xxxx-xxxx-xxxx
+```
 
-Installation
-bash
+Credentials are read in this order:
+1. OS keyring (if available and configured)
+2. Environment variables (if keyring unavailable)
+3. Interactive prompt (if neither available)
+
+## Installation
+
+```bash
 ./install.sh
-Usage
-Setup Credentials
-bash
-# Interactive mode (secure)
-python -m icalendar_sync --setup
+```
 
-# Or use keyring directly
-python -m icalendar_sync --username user@icloud.com
-# Password will be prompted securely
-List Events
-bash
-python -m icalendar_sync list --start "2024-01-01" --end "2024-12-31"
-Requirements
-Python 3.8+
+## Usage
 
-iCloud app-specific password
+### Setup Credentials (Interactive)
 
-Access to iCloud CalDAV server
+```bash
+# Interactive mode - password prompted securely
+python -m icalendar_sync setup --username user@icloud.com
+```
 
-License
+The password will be prompted interactively and stored in OS keyring.
+
+### List Calendars
+
+```bash
+python -m icalendar_sync list
+```
+
+### Get Calendar Events
+
+```bash
+python -m icalendar_sync get --calendar "Personal" --days 7
+```
+
+### Create Event
+
+```bash
+python -m icalendar_sync create \
+  --calendar "Personal" \
+  --title "Meeting" \
+  --start "2024-06-15 14:00" \
+  --duration 60
+```
+
+### Delete Event
+
+```bash
+python -m icalendar_sync delete --calendar "Personal" --uid "event-uid-here"
+```
+
+## Requirements
+
+- Python 3.9+
+- iCloud app-specific password
+- Access to iCloud CalDAV server (caldav.icloud.com:443)
+
+## Security Features
+
+- ✅ OS keyring integration for credential storage
+- ✅ App-specific password requirement (not main password)
+- ✅ SSL/TLS verification enforced
+- ✅ Rate limiting (10 calls per 60 seconds)
+- ✅ Automatic credential redaction in logs
+- ✅ Input validation on all user inputs
+
+## License
+
 MIT
-

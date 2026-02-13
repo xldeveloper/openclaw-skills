@@ -7,7 +7,7 @@
 skill:
   name: icalendar-sync
   display_name: "iCalendar Sync"
-  version: "2.2.18"
+  version: "2.2.30"
   type: runtime  # NOT instruction-only
 
 # Author & License
@@ -18,8 +18,7 @@ author:
 license: MIT
 
 repository:
-  url: "https://github.com/h8kxrfp68z-lgtm/OpenClaw"
-  branch: "skills"
+  url: "https://github.com/h8kxrfp68z-lgtm/iCalendar-Sync"
 
 # =============================================================================
 # REQUIRED ENVIRONMENT VARIABLES (CRITICAL FOR REGISTRY)
@@ -87,10 +86,7 @@ capabilities:
 # SECURITY
 # =============================================================================
 security:
-  credential_storage:
-    preferred: "OS keyring (macOS Keychain, Windows Credential Manager, Linux Secret Service)"
-    fallback: "~/.openclaw/.env (plaintext - DEVELOPMENT ONLY)"
-    warning: "NEVER use plaintext .env in production environments"
+  credential_storage: "OS keyring (macOS Keychain, Windows Credential Manager, Linux Secret Service)"
 
   network_access:
     endpoints:
@@ -108,9 +104,8 @@ security:
 # Security warnings for users
 security_warnings:
   - "CRITICAL: Use App-Specific Password from appleid.apple.com, NOT your regular Apple ID password"
-  - "Store credentials in OS keyring, NOT .env file (production)"
-  - "Never pass passwords via CLI --password flag on shared/multi-user systems"
-  - "For Docker: use Docker secrets or external secrets manager, NOT ENV vars"
+  - "Store credentials in OS keyring for maximum security"
+  - "For Docker: use Docker secrets or external secrets manager"
 
 # =============================================================================
 # PLATFORM SUPPORT
