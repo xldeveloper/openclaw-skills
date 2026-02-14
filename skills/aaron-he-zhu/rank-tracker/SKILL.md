@@ -1,10 +1,52 @@
 ---
 name: rank-tracker
-description: Tracks and analyzes keyword ranking positions over time for both traditional search results and AI-generated responses. Monitors ranking changes, identifies trends, and alerts on significant movements.
-geo-relevance: "medium"
+description: 'Use when the user asks to "track rankings", "check keyword positions", "ranking changes", "monitor SERP positions", "how am I ranking", "where do I rank for this keyword", "did my rankings change", or "keyword position tracking". Tracks and analyzes keyword ranking positions over time for both traditional search results and AI-generated responses. Monitors ranking changes, identifies trends, and alerts on significant movements. For automated alerting, see alert-manager. For comprehensive reports, see performance-reporter.'
+license: Apache-2.0
+metadata:
+  author: aaron-he-zhu
+  version: "2.0.0"
+  geo-relevance: "medium"
+  tags:
+    - seo
+    - geo
+    - rank tracking
+    - keyword positions
+    - serp monitoring
+    - ranking trends
+    - position tracking
+    - ai ranking
+  triggers:
+    - "track rankings"
+    - "check keyword positions"
+    - "ranking changes"
+    - "monitor SERP positions"
+    - "how am I ranking"
+    - "keyword tracking"
+    - "position monitoring"
+    - "where do I rank for this keyword"
+    - "did my rankings change"
+    - "keyword position tracking"
 ---
 
 # Rank Tracker
+
+
+> **[SEO & GEO Skills Library](https://skills.sh/aaron-he-zhu/seo-geo-claude-skills)** · 20 skills for SEO + GEO · Install all: `npx skills add aaron-he-zhu/seo-geo-claude-skills`
+
+<details>
+<summary>Browse all 20 skills</summary>
+
+**Research** · [keyword-research](../../research/keyword-research/) · [competitor-analysis](../../research/competitor-analysis/) · [serp-analysis](../../research/serp-analysis/) · [content-gap-analysis](../../research/content-gap-analysis/)
+
+**Build** · [seo-content-writer](../../build/seo-content-writer/) · [geo-content-optimizer](../../build/geo-content-optimizer/) · [meta-tags-optimizer](../../build/meta-tags-optimizer/) · [schema-markup-generator](../../build/schema-markup-generator/)
+
+**Optimize** · [on-page-seo-auditor](../../optimize/on-page-seo-auditor/) · [technical-seo-checker](../../optimize/technical-seo-checker/) · [internal-linking-optimizer](../../optimize/internal-linking-optimizer/) · [content-refresher](../../optimize/content-refresher/)
+
+**Monitor** · **rank-tracker** · [backlink-analyzer](../backlink-analyzer/) · [performance-reporter](../performance-reporter/) · [alert-manager](../alert-manager/)
+
+**Cross-cutting** · [content-quality-auditor](../../cross-cutting/content-quality-auditor/) · [domain-authority-auditor](../../cross-cutting/domain-authority-auditor/) · [entity-optimizer](../../cross-cutting/entity-optimizer/) · [memory-management](../../cross-cutting/memory-management/)
+
+</details>
 
 This skill helps you track, analyze, and report on keyword ranking positions over time. It monitors both traditional SERP rankings and AI/GEO visibility to provide comprehensive search performance insights.
 
