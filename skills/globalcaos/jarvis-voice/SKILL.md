@@ -1,9 +1,9 @@
 ---
 name: jarvis-voice
 version: 1.0.0
-description: Metallic AI voice persona with TTS and visual transcript styling. Speak responses aloud with a JARVIS-like robotic voice and display transcripts in purple italics.
-homepage: https://github.com/openclaw/openclaw
-repository: https://github.com/openclaw/openclaw
+description: "Give your OpenClaw agent a voice — JARVIS-inspired metallic TTS with sherpa-onnx (fully offline, no cloud). Purple italic transcripts in webchat. Customizable voice effects: flanger, echo, pitch shift. Local-first, zero API costs, zero latency."
+homepage: https://github.com/globalcaos/clawdbot-moltbot-openclaw
+repository: https://github.com/globalcaos/clawdbot-moltbot-openclaw
 metadata:
   openclaw:
     emoji: "🎙️"
