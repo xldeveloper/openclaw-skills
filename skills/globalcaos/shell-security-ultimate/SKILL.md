@@ -1,7 +1,7 @@
 ---
 name: shell-security-ultimate
 version: 1.0.2
-description: Shell command security, execution risk classification, and audit for AI agents. Classifies commands by risk level (SAFE→CRITICAL), enforces transparency, prevents dangerous operations. Includes enforcement scripts and agent integration patterns.
+description: "Classify shell commands by risk level (SAFE to CRITICAL) before your OpenClaw agent executes them. Color-coded output, transparency enforcement, audit logging. Prevent dangerous operations, credential exposure, or unauthorized network access. Enforcement scripts and integration patterns included."
 homepage: https://github.com/globalcaos/clawdbot-moltbot-openclaw
 repository: https://github.com/globalcaos/clawdbot-moltbot-openclaw
 ---
